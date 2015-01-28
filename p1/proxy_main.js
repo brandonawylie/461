@@ -38,16 +38,20 @@ net.createServer(function(sock) {
             var port = req_url.port;
             console.log("CONNECTING TO HOST: " + host + ":" + port);
 			client.connect(req_url.port, req_url.hostname, function() {
+                var retVal = "";
 				client.end(sendStuff + '\r\n');
+
+			    client.on('data', function(data) {
+		        	retVal += data;
+			    });
+
+			    client.on('close', function() {
+                    sock.end(retVal);
+			    });
+                
 			});
 
-			client.on('data', function(data) {
-		    	console.log('DATA: ' + data);
-			});
 
-			client.on('close', function() {
-                console.log("CONNECTION closed");
-			});
 		}
 
 
