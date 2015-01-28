@@ -10,15 +10,10 @@ net.createServer(function(sock) {
 		var req_array = data.toString().split('\r\n');
 		var req_line = req_array[0].split(' ');
 		var req_args = parseArgs(req_array.slice(1, req_array.length));
-		console.log(req_line);
-
+		console.log("RAW DATA: " + data.toString());
+		console.log("parsed request: ");
 		console.log(req_args);
-		var req_url = url.parse(req_line[1].trim());
-		console.log(req_url);
-		/*
-			1. parse the args
-			2. check stuff
-		*/
+
 		// open a TCP socket to them
 		if (false) {//req_line[0] === "CONNECT") {
 			var client = new net.Socket();
@@ -39,18 +34,21 @@ net.createServer(function(sock) {
 		// just relay the request
 		} else {
 			console.log("directing packet:");
-			console.log(req_args);
-			req_args['host'] = url.hostname;
-			req_args['port'] = url.port;
-			var req = http.request(data.toString(), function(res) {
-				res.on('data', function(data) {
-					console.log("GOT DATA FROM: " + host + ':' + port);
-		    		console.log('DATA: ' + data);
-				});
+			req_args['Connection'] = 'close';
 
-				res.on('end', function() {
-		    	console.log("CONNECTED FROM: " + host + ':' + port + " was ended");
+			var client = new net.Socket();
+			console.log("trying to connect to HOST: " + host + ':' + port);
+			client.connect(port, host, function() {
+				client.write(req_args.toString());
 			});
+
+			client.on('data', function(data) {
+	    		console.log("GOT DATA FROM: " + host + ':' + port);
+		    	console.log('DATA: ' + data);
+			});
+
+			client.on('close', function() {
+		    	console.log("CONNECTED FROM: " + host + ':' + port + " was CLOSED");
 			});
 		}
 
@@ -68,7 +66,17 @@ function parseArgs(arg_arr) {
 		var line = arg_arr[i].split(':');
 		if (line.length === 1) 
 			continue;
-		retVal[line[0]] = line[1];
+		retVal[line[0].strip()] = line[1].strip();
+	}
+	return retVal;
+}
+
+function getRequestString(top, args) {
+	var retVal = top[0] + top[1] + "HTTP/1.0\r\n";
+	for (var key in args) {
+		if (args.hasOwnProperty(key)) {
+			retVal += key + ": " + args[key] + "\r\n";
+		}
 	}
 	return retVal;
 }
