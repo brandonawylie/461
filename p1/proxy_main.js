@@ -10,14 +10,11 @@ net.createServer(function(sock) {
 		var req_array = data.toString().split('\r\n');
 		var req_line = req_array[0].split(' ');
 		var req_args = parseArgs(req_array.slice(1, req_array.length));
-		//console.log("RAW DATA: " + data.toString());
         var req_url = url.parse(req_line[1]);
 
         if (req_url.port === null) {
             req_url.port = 80;
         }
-		//console.log("parsed request: ");
-		//console.log(req_args);
 
 		// open a TCP socket to them
 		if (false) {//req_line[0] === "CONNECT") {
@@ -50,13 +47,7 @@ net.createServer(function(sock) {
 			    });
                 
 			});
-
-
 		}
-
-
-
-
 	});
 }).listen(PORT, HOST);
 
