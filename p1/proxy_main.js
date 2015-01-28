@@ -10,45 +10,43 @@ net.createServer(function(sock) {
 		var req_array = data.toString().split('\r\n');
 		var req_line = req_array[0].split(' ');
 		var req_args = parseArgs(req_array.slice(1, req_array.length));
-		console.log("RAW DATA: " + data.toString());
-		console.log("parsed request: ");
-		console.log(req_args);
+		//console.log("RAW DATA: " + data.toString());
+        var req_url = url.parse(req_line[1]);
+
+        if (req_url.port === null) {
+            req_url.port = 80;
+        }
+		//console.log("parsed request: ");
+		//console.log(req_args);
 
 		// open a TCP socket to them
 		if (false) {//req_line[0] === "CONNECT") {
-			var client = new net.Socket();
-			console.log("trying to connect to HOST: " + host + ':' + port);
-			client.connect(port, host, function() {
-				console.log("CONNECTED TO: " + host + ':' + port);
-				client.write(data.toString());
-			});
 
-			client.on('data', function(data) {
-	    		console.log("GOT DATA FROM: " + host + ':' + port);
-		    	console.log('DATA: ' + data);
-			});
 
-			client.on('close', function() {
-		    	console.log("CONNECTED FROM: " + host + ':' + port + " was CLOSED");
-			});
 		// just relay the request
 		} else {
 			console.log("directing packet:");
 			req_args['Connection'] = 'close';
+            console.log(req_url.hostname);
+            console.log(req_url.port);
+
+            var sendStuff = getRequestString(req_line, req_args);
+            console.log(sendStuff);
 
 			var client = new net.Socket();
-			console.log("trying to connect to HOST: " + host + ':' + port);
-			client.connect(port, host, function() {
-				client.write(req_args.toString());
+            var host = req_url.hostname;
+            var port = req_url.port;
+            console.log("CONNECTING TO HOST: " + host + ":" + port);
+			client.connect(req_url.port, req_url.hostname, function() {
+				client.end(sendStuff + '\r\n');
 			});
 
 			client.on('data', function(data) {
-	    		console.log("GOT DATA FROM: " + host + ':' + port);
 		    	console.log('DATA: ' + data);
 			});
 
 			client.on('close', function() {
-		    	console.log("CONNECTED FROM: " + host + ':' + port + " was CLOSED");
+                console.log("CONNECTION closed");
 			});
 		}
 
@@ -64,15 +62,14 @@ function parseArgs(arg_arr) {
 	var retVal = {};
 	for (var i = 0; i < arg_arr.length; i++) {
 		var line = arg_arr[i].split(':');
-		if (line.length === 1) 
-			continue;
-		retVal[line[0].strip()] = line[1].strip();
+		if (line.length === 1) continue;
+		retVal[line[0]] = line[1];
 	}
 	return retVal;
 }
 
 function getRequestString(top, args) {
-	var retVal = top[0] + top[1] + "HTTP/1.0\r\n";
+	var retVal = top[0] + " " + top[1] + " " + "HTTP/1.0\r\n";
 	for (var key in args) {
 		if (args.hasOwnProperty(key)) {
 			retVal += key + ": " + args[key] + "\r\n";
