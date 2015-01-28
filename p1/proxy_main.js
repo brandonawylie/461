@@ -1,5 +1,6 @@
-var net = require('net');
+var net  = require('net');
 var http = require('http');
+var url  = require('url');
 
 var HOST = '127.0.0.1';
 var PORT = '1234';
@@ -9,19 +10,17 @@ net.createServer(function(sock) {
 		var req_array = data.toString().split('\r\n');
 		var req_line = req_array[0].split(' ');
 		var req_args = parseArgs(req_array.slice(1, req_array.length));
-		//console.log(req_line);
-		console.log(req_args);
-		
-		// Port parsing TBD
-		var host = req_line[1];
-		var port = 80;
+		console.log(req_line);
 
+		console.log(req_args);
+		var req_url = url.parse(req_line[1].trim());
+		console.log(req_url);
 		/*
 			1. parse the args
 			2. check stuff
 		*/
 		// open a TCP socket to them
-		if (req_line[0] === "CONNECT") {
+		if (false) {//req_line[0] === "CONNECT") {
 			var client = new net.Socket();
 			console.log("trying to connect to HOST: " + host + ':' + port);
 			client.connect(port, host, function() {
@@ -39,9 +38,11 @@ net.createServer(function(sock) {
 			});
 		// just relay the request
 		} else {
-			req_args["method"] = req_line[0];
-			req_args["hostname"] = req_line[1];
-			var req = http.request(req_args, function(res) {
+			console.log("directing packet:");
+			console.log(req_args);
+			req_args['host'] = url.hostname;
+			req_args['port'] = url.port;
+			var req = http.request(data.toString(), function(res) {
 				res.on('data', function(data) {
 					console.log("GOT DATA FROM: " + host + ':' + port);
 		    		console.log('DATA: ' + data);
