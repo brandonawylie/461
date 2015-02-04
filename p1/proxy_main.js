@@ -25,10 +25,11 @@ net.createServer({allowHalfOpen: true}, function(sock) {
 		if (req_line[0] === "CONNECT") {
 			sendStuff = getRequestString(req_line, req_args);
 			sendStuff.Connection = "keep-alive";
-			client = new net.Socket();
-            host = req_url.hostname;
-            port = req_url.port;
-			client.connect(req_url.port, req_url.hostname, function() {
+			client = new net.Socket({allowHalfOpen: true});
+            host = req_line[1].split(':')[0];
+            port = req_line[1].split(':')[1];
+            console.log("CONNECT: host=" + host + ":" + port);
+			client.connect(port, host, function() {
 				sock.write("HTTP/1.1 200 OK");
 			    client.on('data', function(data) {
 			    	sock.write(data);
@@ -47,9 +48,10 @@ net.createServer({allowHalfOpen: true}, function(sock) {
 		} else {
             sendStuff = getRequestString(req_line, req_args);
 			client = new net.Socket({allowHalfOpen: true});
-            host = req_url.hostname;
             port = req_url.port;
-			client.connect(req_url.port, req_url.hostname, function() {
+            host = req_url.hostname;
+            console.log("PACKET: host=" + host + ":" + port);
+			client.connect(port, host, function() {
 				client.write(sendStuff + '\r\n');
 			    client.on('data', function(data) {
 			    	sock.write(data);
