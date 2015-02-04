@@ -5,7 +5,10 @@ var url  = require('url');
 var HOST = '127.0.0.1';
 var PORT = '1337';
 
-net.createServer(function(sock) {
+var server = net.createServer( {allowHalfOpen: true}, function(sock) {
+	sock.on('end', function() {
+		server.close();
+	});
 	sock.on('data', function(data) {
 		var req_array = data.toString().split('\r\n');
 		var req_line = req_array[0].split(' ');
@@ -17,14 +20,17 @@ net.createServer(function(sock) {
         if (req_url.port === null) {
             req_url.port = 80;
         }
-
+        var sendStuff = null;
+        var host = null;
+        var port = null;
+        var client = null;
 		// open a TCP socket to them
 		if (req_line[0] === "CONNECT") {
-			var sendStuff = getRequestString(req_line, req_args);
+			sendStuff = getRequestString(req_line, req_args);
 			sendStuff.Connection = "keep-alive";
-			var client = new net.Socket();
-            var host = req_url.hostname;
-            var port = req_url.port;
+			client = new net.Socket({allowHalfOpen: true});
+            host = req_url.hostname;
+            port = req_url.port;
 			client.connect(req_url.port, req_url.hostname, function() {
 				sock.write("HTTP/1.1 200 OK");
 			    client.on('data', function(data) {
@@ -43,10 +49,10 @@ net.createServer(function(sock) {
 
 		// just relay the request
 		} else {
-            var sendStuff = getRequestString(req_line, req_args);
-			var client = new net.Socket();
-            var host = req_url.hostname;
-            var port = req_url.port;
+            sendStuff = getRequestString(req_line, req_args);
+			client = new net.Socket({allowHalfOpen: true});
+            host = req_url.hostname;
+            port = req_url.port;
 			client.connect(req_url.port, req_url.hostname, function() {
 				client.end(sendStuff + '\r\n');
 
@@ -55,7 +61,8 @@ net.createServer(function(sock) {
 			    });
 
 			    client.on('end', function() {
-			    	sock.end();
+			    	client.close();
+			    	sock.close();
 			    });
                 
 			});
