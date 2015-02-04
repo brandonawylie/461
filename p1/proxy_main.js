@@ -5,32 +5,25 @@ var url  = require('url');
 var HOST = '127.0.0.1';
 var PORT = '1337';
 
-var server = net.createServer( {allowHalfOpen: true}, function(sock) {
-	sock.on('end', function() {
-		server.close();
-	});
+net.createServer({allowHalfOpen: true}, function(sock) {
 	sock.on('data', function(data) {
 		var req_array = data.toString().split('\r\n');
 		var req_line = req_array[0].split(' ');
 		var req_args = parseArgs(req_array.slice(1, req_array.length));
         var req_url = url.parse(req_line[1]);
 
-
-        console.log(req_array[0]);
+        console.log(req_array[0] + "\nsock bytes read: " + sock.bytesRead);
         if (req_url.port === null) {
             req_url.port = 80;
         }
-        var sendStuff = null;
-        var host = null;
-        var port = null;
-        var client = null;
+
 		// open a TCP socket to them
 		if (req_line[0] === "CONNECT") {
-			sendStuff = getRequestString(req_line, req_args);
+			var sendStuff = getRequestString(req_line, req_args);
 			sendStuff.Connection = "keep-alive";
-			client = new net.Socket({allowHalfOpen: true});
-            host = req_url.hostname;
-            port = req_url.port;
+			var client = new net.Socket();
+            var host = req_url.hostname;
+            var port = req_url.port;
 			client.connect(req_url.port, req_url.hostname, function() {
 				sock.write("HTTP/1.1 200 OK");
 			    client.on('data', function(data) {
@@ -44,32 +37,30 @@ var server = net.createServer( {allowHalfOpen: true}, function(sock) {
 			    client.on('close', function() {
 			    	sock.end();
 			    });
-                
 			});
 
 		// just relay the request
 		} else {
-            sendStuff = getRequestString(req_line, req_args);
-			client = new net.Socket({allowHalfOpen: true});
-            host = req_url.hostname;
-            port = req_url.port;
+            var sendStuff = getRequestString(req_line, req_args);
+			var client = new net.Socket({allowHalfOpen: true});
+            var host = req_url.hostname;
+            var port = req_url.port;
 			client.connect(req_url.port, req_url.hostname, function() {
-				client.end(sendStuff + '\r\n');
-
+				client.write(sendStuff + '\r\n');
 			    client.on('data', function(data) {
 			    	sock.write(data);
 			    });
 
 			    client.on('end', function() {
-			    	client.close();
-			    	sock.close();
+			    	sock.end();
 			    });
                 
+                // Browser has signalled end, relay this to the server
+                sock.on('end', function() {
+                    console.log("browser ended, bytes read: " + sock.bytesRead);
+                    client.end();
+                });
 			});
-
-            sock.on('end', function() {
-                client.end();
-            });
 		}
 	});
 }).listen(PORT, HOST);
