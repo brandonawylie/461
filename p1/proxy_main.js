@@ -3,7 +3,7 @@ var http = require('http');
 var url  = require('url');
 
 var HOST = '127.0.0.1';
-var PORT = '1234';
+var PORT = '1337';
 
 net.createServer(function(sock) {
 	sock.on('data', function(data) {
@@ -22,13 +22,11 @@ net.createServer(function(sock) {
 
 		// just relay the request
 		} else {
-			console.log("directing packet:");
-			req_args['Connection'] = 'close';
-            console.log(req_url.hostname);
-            console.log(req_url.port);
+            //console.log(req_url.hostname);
+            //console.log(req_url.port);
 
             var sendStuff = getRequestString(req_line, req_args);
-            console.log(sendStuff);
+            //console.log(sendStuff);
 
 			var client = new net.Socket();
             var host = req_url.hostname;
@@ -39,11 +37,11 @@ net.createServer(function(sock) {
 				client.end(sendStuff + '\r\n');
 
 			    client.on('data', function(data) {
-		        	retVal += data;
+			    	sock.write(data);
 			    });
 
-			    client.on('close', function() {
-                    sock.end(retVal);
+			    client.on('end', function() {
+			    	sock.end();
 			    });
                 
 			});
