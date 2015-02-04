@@ -31,6 +31,13 @@ net.createServer({allowHalfOpen: true}, function(sock) {
             console.log("CONNECT: host=" + host + ":" + port);
 			client.connect(port, host, function() {
 				sock.write("HTTP/1.1 200 OK");
+
+                // browser => server
+                sock.on('data', function(data) {
+                    client.write(data);
+                });
+
+                // server => browser
 			    client.on('data', function(data) {
 			    	sock.write(data);
 			    });
