@@ -59,6 +59,10 @@ net.createServer(function(sock) {
 			    });
                 
 			});
+
+            sock.on('end', function() {
+                client.end();
+            });
 		}
 	});
 }).listen(PORT, HOST);
