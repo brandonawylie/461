@@ -5,10 +5,13 @@ var url  = require('url');
 var HOST = '127.0.0.1';
 var PORT = '1337';
 
+var cache = {};
 net.createServer({allowHalfOpen: true}, function(sock) {
 	sock.on('data', function(data) {
+        cache[data] = true;
+        console.log(cache);
 
-        // parse the request
+        // parse the request  
 		var req_array = data.toString().split('\r\n');
 		var req_line = req_array[0].split(' ');
 		var req_args = parseArgs(req_array.slice(1, req_array.length));
@@ -26,24 +29,22 @@ net.createServer({allowHalfOpen: true}, function(sock) {
 
 		// open a TCP socket to them
 		if (req_line[0] === "CONNECT") {
-            // set the connection/proxyconnection to kee-alive
-			sendStuff.Connection = "keep-alive";
-            sendStuff["Proxy-connection"] = "keep-alive";          
-            console.log("CONNECT: sending\n" + sendStuff);
+            // set the connection/proxyconnection to kee-alive        
+            //console.log("CONNECT: sending\n" + data);
             
             // determine the host & port, then create a connection
             host = req_line[1].split(':')[0];
             port = req_line[1].split(':')[1];
             var con_client = net.createConnection(port, host);
-            console.log("CONNECT: host=" + host + ":" + port);
+            //console.log("CONNECT: host=" + host + ":" + port);
 			con_client.on('connect', function() {
-                console.log("CONNECT: success when connecting to host=" + host + ":" + port);
+                //console.log("CONNECT: success when connecting to host=" + host + ":" + port);
 				sock.write("HTTP/1.1 200 OK");
-                con_client.write(sendStuff);
+                //con_client.write(sendStuff);
 
                 // browser => server
                 sock.on('data', function(data) {
-                    console.log("CONNECT: recieving data from browser");
+                    //console.log("CONNECT: recieving data from browser");
                     con_client.write(data);
                 });
 
@@ -77,7 +78,7 @@ net.createServer({allowHalfOpen: true}, function(sock) {
 			var client = new net.Socket({allowHalfOpen: true});
             port = req_url.port;
             host = req_url.hostname;
-            console.log("PACKET: host=" + host + ":" + port);
+            //console.log("PACKET: host=" + host + ":" + port);
 
 			client.connect(port, host, function() {
 
@@ -95,7 +96,7 @@ net.createServer({allowHalfOpen: true}, function(sock) {
                 
                 // Browser has signalled end, relay this to the server
                 sock.on('end', function() {
-                    console.log("browser ended, bytes read: " + sock.bytesRead);
+                    //console.log("browser ended, bytes read: " + sock.bytesRead);
                     client.end();
                 });
 
