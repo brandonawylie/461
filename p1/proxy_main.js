@@ -36,6 +36,7 @@ net.createServer({allowHalfOpen: true}, function(sock) {
         //console.log('REQUEST: \n' + req_array);
 		var req_line = req_array[0].split(' ');
 		var req_args = parseArgs(req_array.slice(1, req_array.length));
+        console.log(req_line[1]);
         var req_url = url.parse(req_line[1]);
         
         // if we have no port, it's probably http
@@ -55,14 +56,15 @@ net.createServer({allowHalfOpen: true}, function(sock) {
 
 		// open a TCP socket to them
 		if (req_line[0] === "CONNECT") {
-            console.log();
-            console.log("Establishing CONNECT");
-            console.log();
+            //console.log();
+            //console.log("Establishing CONNECT");
+            //console.log();
             // set the connection/proxyconnection to kee-alive        
             isTunnel = true;
             // determine the host & port, then create a connection
             host = req_line[1].split(':')[0];
             port = req_line[1].split(':')[1];
+
             tunnel = new net.Socket({allowHalfOpen: true});
             //console.log("CONNECT: host=" + host + ":" + port);
 			
@@ -110,13 +112,15 @@ net.createServer({allowHalfOpen: true}, function(sock) {
             req_args['Proxy-connection'] = "close";
             sendStuff = getRequestString(req_line, req_args);
 			var client = new net.Socket({allowHalfOpen: true});
-            port = req_url.port;
+            port = 80;
             host = req_url.hostname;
+            console.log("host: " + host);
+            console.log("port: " + port);
             //console.log("Client: host=" + host + ":" + port);
 
             client.connect(port, host, function() {
                 
-                client.end(sendStuff + '\r\n');
+                client.end(sendStuff + '\r\n\r\n');
                 
                 client.on('data', function(data) {
                     sock.write(data);
@@ -140,7 +144,7 @@ net.createServer({allowHalfOpen: true}, function(sock) {
 
                 client.on('end', function() {
                     ref--;
-                    if (ref == 0) {
+                    if (ref === 0) {
                         console.log("server closed its connection(end)");
                         sock.end();
                     }
