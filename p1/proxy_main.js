@@ -9,9 +9,13 @@ net.createServer({allowHalfOpen: true}, function(sock) {
     var isTunnel = false;
     var tunnel  = null;
     var ref = 0;
+
 	sock.on('data', function(data) {
-        console.log("sockets: " + ref);
+        //console.log("sockets: " + ref);
         if (isTunnel) {
+            console.log();
+            console.log("------------------------SENDING THRU TUNNEL ----------------");
+            console.log();
             tunnel.write(data);
             return;
         }
@@ -21,23 +25,23 @@ net.createServer({allowHalfOpen: true}, function(sock) {
 		var req_array = null;
         var req_data = null;
         if (everything.length == 2) {
-            req_array = everything[0];
+            req_array = everything[0].replace(/\r/gm, '');
             req_data = everything[1];
         } else {
             req_array = data.toString();
         }
-        console.log(everything);
-        console.log(isTunnel);
+        //console.log(everything);
+        //console.log("is tunnel? " + isTunnel);
         req_array = req_array.split('\n');
 		var req_line = req_array[0].split(' ');
 		var req_args = parseArgs(req_array.slice(1, req_array.length));
         var req_url = url.parse(req_line[1]);
-        console.log(everything);
         // if we have no port, it's probably http
         if (req_url.port === null) {
             req_url.port = 80;
         }
-
+        //console.log(req_line);
+        console.log(req_array[0]);
         // set up vars for scope
         var sendStuff = getRequestString(req_line, req_args);
         var host = null;
@@ -59,12 +63,6 @@ net.createServer({allowHalfOpen: true}, function(sock) {
 				sock.write("HTTP/1.1 200 OK\r\n\r\n");
                 tunnel.write(req_data);
 
-                // browser => server
-                sock.on('data', function(data) {
-                    //console.log("CONNECT: recieving data from browser");
-                    tunnel.write(data);
-                });
-
                 // server => browser
 			    tunnel.on('data', function(data) {
                     //console.log("CONNECT: recieving data from host=" + host + ":" + port);
@@ -85,7 +83,7 @@ net.createServer({allowHalfOpen: true}, function(sock) {
             tunnel.on('error', function(err) {
                 //console.log("CONNECT: error when connecting to host=" + host + ":" + port);
                 //console.log(err);
-                sock.end("HTTP/1.1 502 Bad Gateway");
+                sock.end("HTTP/1.1 502 Bad Gateway\r\n\r\n");
             });
 
             tunnel.setKeepAlive(enabled=true, 1000);
@@ -106,7 +104,7 @@ net.createServer({allowHalfOpen: true}, function(sock) {
                 });
 
                 client.on('end', function() {
-                    sock.end();
+                    //sock.end();
                 });
 
                 client.on('close', function() {
