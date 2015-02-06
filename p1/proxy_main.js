@@ -5,18 +5,34 @@ var url  = require('url');
 var HOST = '127.0.0.1';
 var PORT = '1337';
 
-var cache = {};
 net.createServer({allowHalfOpen: true}, function(sock) {
+    var isTunnel = false;
+    var tunnel  = null;
+    var ref = 0;
 	sock.on('data', function(data) {
-        cache[data] = true;
-        console.log(cache);
+        console.log("sockets: " + ref);
+        if (isTunnel) {
+            tunnel.write(data);
+            return;
+        }
 
-        // parse the request  
-		var req_array = data.toString().split('\r\n');
+        // parse the request 
+        var everything = data.toString().split('\r\n\r\n');
+		var req_array = null;
+        var req_data = null;
+        if (everything.length == 2) {
+            req_array = everything[0];
+            req_data = everything[1];
+        } else {
+            req_array = data.toString();
+        }
+        console.log(everything);
+        console.log(isTunnel);
+        req_array = req_array.split('\n');
 		var req_line = req_array[0].split(' ');
 		var req_args = parseArgs(req_array.slice(1, req_array.length));
         var req_url = url.parse(req_line[1]);
-
+        console.log(everything);
         // if we have no port, it's probably http
         if (req_url.port === null) {
             req_url.port = 80;
@@ -29,47 +45,50 @@ net.createServer({allowHalfOpen: true}, function(sock) {
 
 		// open a TCP socket to them
 		if (req_line[0] === "CONNECT") {
+
             // set the connection/proxyconnection to kee-alive        
             //console.log("CONNECT: sending\n" + data);
-            
+            isTunnel = true;
             // determine the host & port, then create a connection
             host = req_line[1].split(':')[0];
             port = req_line[1].split(':')[1];
-            var con_client = net.createConnection(port, host);
+            tunnel = net.createConnection(port, host);
             //console.log("CONNECT: host=" + host + ":" + port);
-			con_client.on('connect', function() {
+			tunnel.on('connect', function() {
                 //console.log("CONNECT: success when connecting to host=" + host + ":" + port);
-				sock.write("HTTP/1.1 200 OK");
-                //con_client.write(sendStuff);
+				sock.write("HTTP/1.1 200 OK\r\n\r\n");
+                tunnel.write(req_data);
 
                 // browser => server
                 sock.on('data', function(data) {
                     //console.log("CONNECT: recieving data from browser");
-                    con_client.write(data);
+                    tunnel.write(data);
                 });
 
                 // server => browser
-			    con_client.on('data', function(data) {
-                    console.log("CONNECT: recieving data from host=" + host + ":" + port);
+			    tunnel.on('data', function(data) {
+                    //console.log("CONNECT: recieving data from host=" + host + ":" + port);
 			    	sock.write(data);
 			    });
 
-			    con_client.on('end', function() {
+			    tunnel.on('end', function() {
 			    	sock.end();
+                    isTunnel = false;
 			    });
 
-			    con_client.on('close', function() {
+			    tunnel.on('close', function() {
 			    	sock.end();
+                    isTunnel = false;
 			    });
 			});
 
-            con_client.on('error', function(err) {
-                console.log("CONNECT: error when connecting to host=" + host + ":" + port);
-                console.log(err);
+            tunnel.on('error', function(err) {
+                //console.log("CONNECT: error when connecting to host=" + host + ":" + port);
+                //console.log(err);
                 sock.end("HTTP/1.1 502 Bad Gateway");
             });
 
-            con_client.setKeepAlive(enabled=true, 1000);
+            tunnel.setKeepAlive(enabled=true, 1000);
 
 		// just relay the request
 		} else {
@@ -105,17 +124,14 @@ net.createServer({allowHalfOpen: true}, function(sock) {
 			});
 
             client.on('error', function(err) {
-                console.log("PACKET: error");
-                console.log(err);
+                //console.log("PACKET: error");
+                //console.log(err);
             });
 		}
 	
         sock.on('error', function(err) {
-            console.log("SOCK: error");
+            //console.log("SOCK: error");
             console.log(err);
-            if(client !== null) 
-                client.end();
-            sock.end();
         });
     });
 
