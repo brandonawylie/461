@@ -26,16 +26,16 @@ net.createServer({allowHalfOpen: true}, function(sock) {
 		var req_array = null;
         var req_data = null;
         if (header_and_data.length == 2) {
-            req_array = header_and_data[0].replace(/\r/gm, '');
+            req_array = header_and_data[0];
             req_data = header_and_data[1];
         } else {
             // Data is just header
             req_array = data.toString();
         }
-        req_array = req_array.split('\n');
+        req_array = req_array.replace(/\r/gm, '').split('\n');
+        //console.log('REQUEST: \n' + req_array);
 		var req_line = req_array[0].split(' ');
 		var req_args = parseArgs(req_array.slice(1, req_array.length));
-        console.log(req_line[1]);
         var req_url = url.parse(req_line[1]);
         
         // if we have no port, it's probably http
@@ -49,7 +49,7 @@ net.createServer({allowHalfOpen: true}, function(sock) {
         }
         
         // set up vars for scope
-        var sendStuff = getRequestString(req_line, req_args);
+        var sendStuff = null;
         var host = null;
         var port = null;
 
@@ -108,10 +108,11 @@ net.createServer({allowHalfOpen: true}, function(sock) {
             console.log(req_array[0]);
             req_args.Connection = "close";
             req_args['Proxy-connection'] = "close";
+            sendStuff = getRequestString(req_line, req_args);
 			var client = new net.Socket({allowHalfOpen: true});
             port = req_url.port;
             host = req_url.hostname;
-            console.log("Client: host=" + host + ":" + port);
+            //console.log("Client: host=" + host + ":" + port);
 
             client.connect(port, host, function() {
                 
@@ -119,6 +120,22 @@ net.createServer({allowHalfOpen: true}, function(sock) {
                 
                 client.on('data', function(data) {
                     sock.write(data);
+                    // if (data.toString().indexOf("Connection: keep-alive") > -1) {
+                    //     // Connection is keep alive, need to switch header format
+                    //     var server_data = data.toString();
+                    //     var header_endex = server_data.indexOf("\r\n\r\n");
+                    //     var server_header = server_data.slice(0, header_endex);
+                        
+                    //     // Send payload as stream
+                    //     sock.write(server_data.slice(header_endex));
+
+                    //     // Parse & change header then send
+                    //     res_array = server_header.replace(/\r/gm, '').split('\n');
+                    //     var res_line = req_array[0].split(' ');
+                    //     var res_args = parseArgs(res_array.slice(1, res_array.length));
+                    //     var response_header = getRequestString(res_line, res_args);
+                    //     console.log("\nRESPONSE HEADER:\n" + response_header);
+                    // }
                 });
 
                 client.on('end', function() {
