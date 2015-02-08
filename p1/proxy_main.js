@@ -14,8 +14,6 @@ var PORT = process.argv[2];
 net.createServer({allowHalfOpen: true}, function(sock) {
     var isTunnel = false;
     var tunnel  = null;
-    var ref = 0;
-    var browserDone = false;
 
     sock.on('data', function(data) {
         // Relay data to server if tunneling 
@@ -97,7 +95,6 @@ net.createServer({allowHalfOpen: true}, function(sock) {
         //  Relay the request
         } else {
             // Setup connection to close, and create request to send
-            ref++;
             req_args.Connection = "close";
             req_args['Proxy-connection'] = "close";
             sendStuff = getRequestString(req_line, req_args);
@@ -112,19 +109,10 @@ net.createServer({allowHalfOpen: true}, function(sock) {
                 
                 client.on('data', function(data) {
                     sock.write(data);
-                    if (data.toString().indexOf("Connection: keep-alive") > -1) {
-                        // TODO: For debugging -- Can erase this if no problems arise
-                        console.log();
-                        console.log("RESPONSE CONTAINS ALIVE");
-                        console.log();
-                    }
                 });
 
                 client.on('end', function() {
-                    ref--;
-                    if (ref === 0) {
-                        sock.end();
-                    }
+                    sock.end();
                 });
 
                 // Browser has signalled end, relay this to the server
