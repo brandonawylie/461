@@ -1,3 +1,0 @@
-#!/usr/bin/bash
-
-node proxy_main.js $1
