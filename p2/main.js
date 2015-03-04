@@ -6,6 +6,7 @@ var http = require('http');
 var url  = require('url');
 var util = require('util');
 var spawn = require('child_process').spawn;
+var torutil = require('./torutil');
 
 var PORT = 1337;
 
@@ -22,6 +23,12 @@ var routerNumber = Math.floor((Math.random() * 9999) + 1);
 // TAG ourselves to log
 var TAG = router_name + ": main.js: ";
 
+var routerAddress = "";
+
+require('dns').lookup(require('os').hostname(), function (err, add, fam) {
+  routerAddress = add;
+});
+
 var server = net.createServer({allowHalfOpen: true}, function(incomingSocket) {
     util.log(TAG + "Received Incoming Socket from host " + incomingSocket.remoteAddress + ":" + incomingSocket.remotePort);
     // determine if form tor or browser
@@ -33,8 +40,11 @@ getTorRegistrations(function(data) {
         // error
         util.log(TAG + "errored getting registrations");
     }
-    torRegistrations = data;
+    
+    torRegistrations = torutil.parseRegistrations(data);
+    
     util.log(TAG + "Registrations recieved: \n" + data);
+
     server.listen(PORT, function() {
         util.log(TAG + "TCP Server Bound to port " + PORT);
         registerRouter(PORT);
@@ -45,6 +55,12 @@ getTorRegistrations(function(data) {
 
 function createCircuit(data) {
     util.log(TAG + "Creating circuit...");
+    var currentCircuit = [];
+    for (var i = 0; i < 3; i++) {
+        currentCircuit.push(torRegistrations[Math.floor((Math.random() * torRegistrations.length))]);
+    }
+    util.log(TAG + "Chose 4 random routers with ip addresses: " + 
+             currentCircuit[0][0] + ", " + currentCircuit[1][0] + ", " + currentCircuit[2][0]);
 }
 
 function registerRouter(port) {
