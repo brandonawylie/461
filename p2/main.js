@@ -6,6 +6,7 @@ var http = require('http');
 var url  = require('url');
 var util = require('util');
 var spawn = require('child_process').spawn;
+var torutil = require('./torutil');
 
 var PORT = 1337;
 
@@ -33,7 +34,7 @@ getTorRegistrations(function(data) {
         // error
         util.log(TAG + "errored getting registrations");
     }
-    torRegistrations = data;
+    torRegistrations = torutil.parseRegistrations(data);
     util.log(TAG + "Registrations recieved: \n" + data);
     server.listen(PORT, function() {
         util.log(TAG + "TCP Server Bound to port " + PORT);
