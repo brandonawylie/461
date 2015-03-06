@@ -26,12 +26,8 @@ function createOpenCell(circ_id, opener_id, opened_id) {
     buf.writeUInt8(OPEN, 2);
     buf.writeUInt32BE(opener_id, 3);
     buf.writeUInt32BE(opened_id, 7);
-    var position = 11;
     // Fill buffer with 0's
-    for (i = position; i < SIZE; i++) {
-        buf.writeUInt8(0, i);
-    }
-    return buf
+    return fillZeros(buf, 11);
 }
 
 function createOpenedCell(circ_id, opener_id, opened_id) {
@@ -42,10 +38,8 @@ function createOpenedCell(circ_id, opener_id, opened_id) {
     buf.writeUInt32BE(opened_id, 7);
     var position = 11;
     // Fill buffer with 0's
-    for (i = position; i < SIZE; i++) {
-        buf.writeUInt8(0, i);
-    }
-    return buf
+    return fillZeros(buf, 11);
+
 }
 
 function createOpenFailedCell(circ_id, opener_id, opened_id) {
@@ -56,60 +50,47 @@ function createOpenFailedCell(circ_id, opener_id, opened_id) {
     buf.writeUInt32BE(opened_id, 7);
     var position = 11;
     // Fill buffer with 0's
-    for (i = position; i < SIZE; i++) {
-        buf.writeUInt8(0, i);
-    }
-    return buf
+    return fillZeros(buf, 11);
 }
 
 function createCreateCell(circ_id) {
     var buf = new Buffer(SIZE);
     buf.writeUInt16BE(circ_id, 0);
     buf.writeUInt8(CREATE, 2);
-    var position = 3;
     // Fill buffer with 0's
-    for (i = position; i < SIZE; i++) {
-        buf.writeUInt8(0, i);
-    }
-    return buf
+    return fillZeros(buf, 3);
 }
 
 function createCreatedCell(circ_id) {
     var buf = new Buffer(SIZE);
     buf.writeUInt16BE(circ_id, 0);
     buf.writeUInt8(CREATED, 2);
-    var position = 3;
     // Fill buffer with 0's
-    for (i = position; i < SIZE; i++) {
-        buf.writeUInt8(0, i);
-    }
-    return buf
+    return fillZeros(buf, 3);
 }
 
 function createCreateFailedCell(circ_id) {
     var buf = new Buffer(SIZE);
     buf.writeUInt16BE(circ_id, 0);
     buf.writeUInt8(CREATE_FAILED, 2);
-    var position = 3;
     // Fill buffer with 0's
-    for (i = position; i < SIZE; i++) {
-        buf.writeUInt8(0, i);
-    }
-    return buf
+    return fillZeros(buf, 3);
 }
 
 function createDestroyCell(circ_id) {
     var buf = new Buffer(SIZE);
     buf.writeUInt16BE(circ_id, 0);
     buf.writeUInt8(DESTROY, 2);
-    var position = 3;
     // Fill buffer with 0's
-    for (i = position; i < SIZE; i++) {
-        buf.writeUInt8(0, i);
-    }
-    return buf
+    return fillZeros(buf, 3);
 }
 
+function fillZeros(buffer, start) {
+    for (i = start; i < SIZE; i++) {
+        buf.writeUInt8(0, i);
+    }
+    return buf;
+}
 module.exports = {
     createOpenCell: createOpenCell,
     createOpenedCell: createOpenedCell,
