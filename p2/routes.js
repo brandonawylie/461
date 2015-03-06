@@ -7,31 +7,6 @@ var spawn = require('child_process').spawn;
 var TAG = "routes.js: ";
 var PORT = 1337;
 
-case 1:
-    routes.commandCreate(pobj);
-    break;
-case 2:
-    routes.commandCreated(pobj);
-    break;
-case 3:
-    relay.unpackRelay(pobj);
-    break;
-case 4:
-    routes.commandDestroy(pobj);
-    break;
-case 5:
-    routes.commandOpen(pobj);
-    break;
-case 6:
-    routes.commandOpened(pobj);
-    break;
-case 7:
-    routes.commandOpenFailed(pobj);
-    break;
-case 8:
-    routes.commandCreateFailed(pobj);
-    break;
-
 function commandCreate(obj) {
 
 }
@@ -48,8 +23,24 @@ function commandDestroy(obj) {
 
 }
 
-function commandOpen(obj) {
-
+function commandOpen(obj, socket) {
+    var map_a = {
+        "AgentID": obj.AgentIDBegin,
+        "circuitNum": obj.CircuitID
+    };
+    var map_b = {
+        "AgentID": obj.AgentIDEnd,
+        "circuitNum": obj.CircuitID
+    };
+    if (!routingTable.hasOwnProperty(map_a) || !routingTable.hasOwnProperty(map_b)) {
+        util.log(TAG + "Incoming Socket has no routing match, archiving under " + circuitNum);
+        routingTable[map_a] = map_b;
+        routingTable[map_b] = map_a;
+        
+    }
+    if (!socketTable.hasOwnProperty(obj.AgentIDBegin)) {
+        socketTable[obj.AgentIDBegin] = socket;
+    }
 }
 
 function commandOpened(obj) {
