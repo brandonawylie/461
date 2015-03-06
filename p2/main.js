@@ -87,9 +87,9 @@ getTorRegistrations(function(data) {
     
     util.log(TAG + "Registrations recieved: \n" + data);
 
-    server.listen(TOR_PORT, function() {
-        util.log(TAG + "TCP Server Bound to port " + PORT);
-        registerRouter(PORT);
+    tor_server.listen(TOR_PORT, function() {
+        util.log(TAG + "TCP Server Bound to port " + TOR_PORT);
+        registerRouter(TOR_PORT);
         createCircuit(data);
     });
 });
