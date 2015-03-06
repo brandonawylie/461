@@ -32,10 +32,22 @@ function getCircuitNumberEven() {
     return val;
 }
 
+function removeSocketFromTable(sock) {
+    for (var key in socketTable) {
+        if (p.hasOwnProperty(key)) {
+            if (socketTable[key] === sock) {
+                socketTable[key].end();
+                delete socketTable[key];
+            }
+        }
+    }
+}
+
 
 
 module.exports = {
     parseRegistrations: parseRegistrations,
     isCommandCell: isCommandCell,
-    isRelayCell: isRelayCell
+    isRelayCell: isRelayCell,
+    removeSocketFromTable: removeSocketFromTable
 };

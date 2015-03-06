@@ -41,23 +41,28 @@ var server = net.createServer({allowHalfOpen: true}, function(incomingSocket) {
     var circuitNum = getRandomCircuitNumberOdd();
 
 
-    pkt = '';
+    var socketBuffer = new Buffer();
     incomingSocket.on('data', function(data) {
-        pkt += data;
+        socketBuffer = Buffer.concat([socketBuffer, data]);
+
+        if (socketBuffer.length > 512) {
+            util.log(TAG + "Recieved end from host with complete data recv: " + pkt);
+
+            var buf = socketBuffer.slice(0, 512);
+            var pkt = buf.toString();
+            socketBuffer = socketBuffer.slice(512);
+
+            if (data.toString().toLowerCase().indexOf("http") >= 0) {
+                relay.packAndSendData(pkt);
+            } else {
+                command.unpack(pkt, incomingSocket);
+            }
+        }
     });
 
     incomingSocket.on('end', function(data) {
-        util.log(TAG + "Recieved end from host with complete data recv: " + pkt);
-
-
-        var buf = new Buffer(message);
-        var type = buf.readUInt8(2);
-
-        if (data.toString().toLowerCase().indexOf("http") >= 0) {
-            relay.packAndSendData(pkt);
-        } else {
-            command.unpack(pkt, incomingSocket);
-        }
+        util.log(TAG + "Recieved end from host");
+        torutil.removeSocketFromTable(incomingSocket);
     });
 });
 
@@ -85,6 +90,7 @@ function createCircuit(data) {
     for (var i = 0; i < 3; i++) {
         currentCircuit.push(torRegistrations[Math.floor((Math.random() * torRegistrations.length))]);
     }
+    console.log(currentCircuit);
     util.log(TAG + "Chose 4 random routers with ip addresses: " + 
              currentCircuit[0][0] + ", " + currentCircuit[1][0] + ", " + currentCircuit[2][0]);
 
@@ -112,7 +118,7 @@ function createCircuit(data) {
 function registerRouter(port) {
 
     // Currently has dummy registration info
-    var regClient = spawn('python', ['./registration_client.py', port, router_name, routerNumber]);
+    var regClient = spawn('python', ['./registration_client.py', port, router_name, agentID]);
 
     util.log(TAG + "registering: in progress");
     function endChild() {
