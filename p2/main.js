@@ -9,8 +9,8 @@ var spawn   = require('child_process').spawn;
 var torutil = require('./torutil');
 var command = require('./command_cell');
 var relay   = require('./relay_cell');
-var PORT = 1337;
-
+var BROSWER_PORT = 1337;
+var TOR_PORT = 1338;
 // registations
 var torRegistrations = '';
 
@@ -35,8 +35,8 @@ routingTable = {};
 socketTable  = {};
 streamTable  = {};
 
-var server = net.createServer({allowHalfOpen: true}, function(incomingSocket) {
-    util.log(TAG + "Received Incoming Socket from host " + incomingSocket.remoteAddress + ":" + incomingSocket.remotePort);
+var tor_server = net.createServer({allowHalfOpen: true}, function(incomingSocket) {
+    util.log(TAG + "Received Incoming Socket from tor router " + incomingSocket.remoteAddress + ":" + incomingSocket.remotePort);
     // determine if form tor or browser
     var circuitNum = getRandomCircuitNumberOdd();
 
@@ -51,12 +51,7 @@ var server = net.createServer({allowHalfOpen: true}, function(incomingSocket) {
             var buf = socketBuffer.slice(0, 512);
             var pkt = buf.toString();
             socketBuffer = socketBuffer.slice(512);
-
-            if (data.toString().toLowerCase().indexOf("http") >= 0) {
-                relay.packAndSendData(pkt);
-            } else {
-                command.unpack(pkt, incomingSocket);
-            }
+            command.unpack(pkt, incomingSocket);
         }
     });
 
@@ -66,6 +61,22 @@ var server = net.createServer({allowHalfOpen: true}, function(incomingSocket) {
     });
 });
 
+var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSocket) {
+    util.log(TAG + "Received Incoming Socket from broswer " + incomingSocket.remoteAddress + ":" + incomingSocket.remotePort);
+    pkt = '';
+    incomingSocket.on('data', function(data) {
+        pkt += data;
+    });
+
+    incomingSocket.on('end', function(data) {
+        util.log(TAG + "Recieved end from host with complete data recv: " + pkt);
+        relay.packAndSendData(pkt);
+    });
+}).listen(BROSWER_PORT);
+
+/*========================
+TOR SERVER STARTS UP HERE
+========================*/
 getTorRegistrations(function(data) {
     if (data === null) {
         // error
@@ -76,7 +87,7 @@ getTorRegistrations(function(data) {
     
     util.log(TAG + "Registrations recieved: \n" + data);
 
-    server.listen(PORT, function() {
+    server.listen(TOR_PORT, function() {
         util.log(TAG + "TCP Server Bound to port " + PORT);
         registerRouter(PORT);
         createCircuit(data);
