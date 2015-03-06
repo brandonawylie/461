@@ -3,6 +3,7 @@ var http = require('http');
 var url  = require('url');
 var util = require('util');
 var spawn = require('child_process').spawn;
+var torutil = require('./torutil');
 
 var TAG = "relay_cell.js: ";
 var PORT = 1337;
@@ -23,17 +24,17 @@ var RELAY = 3;
 // circ id | 0x03  |  stream id |  0x0000 | digest (crypto) | body length | relay cmd  |  body
 // 2       |   1   |        2   |    2    |    4            |        2    |      1     | <body length>
 
-function createBeginCell(circ_id, stream_id, ip, port) {
+function createBeginCell(circ_id, stream_id, host_id, port) {
     // Used for creating a stream on the circuit in header
     var buf = createBasicRelay(circ_id, stream_id);
-    // length of ip + port + '\0' = 6 bytes
-    var body_length = 7;
+    // Body consists of host_id + port + \0
+    body = host_id + ":" + port + '\0';
+    body_length = body.length;
     buf.writeUInt16BE(body_length, 11);
     buf.writeUInt8(BEGIN, 13);
-    buf.writeUInt32BE(ip, 14);
-    buf.writeUInt16BE(port, 18);
-    buf.write('\0', 20);
-    return fillZeros(buf, 21);
+    buf.write(body, 14);
+    buf_location = 14 + body_length;
+    return fillZeros(buf, buf_location);
 }
 
 // Pre-condition: Data size is less than 499 bytes
@@ -45,7 +46,7 @@ function createDataCell(circ_id, stream_id, data) {
     buf.writeUInt16BE(body_length, 11);
     buf.writeUInt8(DATA, 13);
     buf.write(data_string, 14);
-    buf_location = 14 + body_length;
+    var buf_location = 14 + body_length;
     return fillZeros(buf, buf_location);
 }
 
@@ -70,15 +71,15 @@ function createConnectedCell(circ_id, stream_id) {
 function createExtendCell(circ_id, stream_id, ip, port, agent_id) {
     // Used for extending a circuit
     var buf = createBasicRelay(circ_id, stream_id);
-    // ip + port + '\0' + agentid = 11
-    var body_length = 11;
+    var body = ip + ":" + port + '\0';
+    var body_length = body.length;
     buf.writeUInt16BE(body_length, 11);
     buf.writeUInt8(EXTEND, 13);
-    buf.writeUInt32BE(ip, 14);
-    buf.writeUInt16BE(port, 18);
-    buf.write('\0', 20);
-    buf.writeUInt16BE(agent_id, 21);
-    return fillZeros(buf, 25);
+    buf.write(body, 14);
+    var buf_location = 14 + body_length;
+    buf.writeUInt32BE(agent_id, buf_location);
+    buf_location += 4;
+    return fillZeros(buf, buf_location);
 }
 
 function createExtendedCell(circ_id, stream_id) {
