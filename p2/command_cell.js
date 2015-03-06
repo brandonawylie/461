@@ -17,9 +17,6 @@ var DESTROY = 4;
 var RELAY = 3;
 var SIZE = 512;
 
-var fakeBuf = createOpenCell(12, 551414, 3245235);
-console.log(fakeBuf);
-
 function createOpenCell(circ_id, opener_id, opened_id) {
     var buf = new Buffer(SIZE);
     buf.writeUInt16BE(circ_id, 0);
@@ -87,10 +84,11 @@ function createDestroyCell(circ_id) {
 
 function fillZeros(buffer, start) {
     for (i = start; i < SIZE; i++) {
-        buf.writeUInt8(0, i);
+        buffer.writeUInt8(0, i);
     }
-    return buf;
+    return buffer;
 }
+
 module.exports = {
     createOpenCell: createOpenCell,
     createOpenedCell: createOpenedCell,
