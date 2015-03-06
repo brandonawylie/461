@@ -103,23 +103,10 @@ function createCircuit(data) {
     
 
     // send to cell 2
-    //socketTable[currentCircuit[1][2]].write(relay.createCell(circuitNum));
+    socketTable[currentCircuit[1][2]].write(relay.createExtendCell(circuitNum, 0, currentCircuit[1][0], currentCircuit[1][1]));
 
     // send to cell 3
-    if (!socketTable.hasOwnProperty(currentCircuit[2][2])) {
-        socketTable[currentCircuit[2][2]] = net.createConnection(currentCircuit[2][1], currentCircuit[2][0], function() {
-            util.log(TAG + "Successfully created connection from " + 
-                     agentID + " to " + currentCircuit[2][0] + ":" + currentCircuit[2][1]);
-        });
-
-        // send open cell
-        socketTable[currentCircuit[2][2]].write(command.createOpenCell(circuitNum, agentID, currentCircuit[2][2]), function() {
-            socketTable[currentCircuit[2][2]].write(command.createCreateCell(circuitNum));
-        });        
-    } else {
-        // if we have an entry, then they have an entry
-        socketTable[currentCircuit[2][2]].write(command.createCreateCell(circuitNum));
-    }
+    ocketTable[currentCircuit[2][2]].write(relay.createExtendCell(circuitNum, 0, currentCircuit[2][0], currentCircuit[2][1]));
 }
 
 function registerRouter(port) {
