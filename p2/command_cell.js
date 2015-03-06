@@ -3,6 +3,8 @@ var http = require('http');
 var url  = require('url');
 var util = require('util');
 var spawn = require('child_process').spawn;
+var routes = require('./routes');
+var relay = require('./command_relay');
 
 var TAG = "command_relay.js: ";
 var PORT = 1337;
@@ -87,6 +89,53 @@ function fillZeros(buffer, start) {
         buffer.writeUInt8(0, i);
     }
     return buffer;
+}
+
+function unpack(pkt) {
+    var pobj = {
+        "CircuitID":    null,
+        "CommandType":  null,
+        "AgentIDBegin": null,
+        "AgentIDEnd":   null,
+        "StreamID":     null,
+        "Digest":       null,
+        "BodyLength":   null,
+        "Relay": {
+            "Command":  null,
+            "Body":     null
+        }    
+    };
+
+    pobj.CircuitID =   pkt.readUInt16BE(0);
+    pobj.CommandType = pkt.readUInt8(2);
+    
+    switch(pobj.CommandType) {
+        case 1:
+            routes.commandCreate(pobj);
+            break;
+        case 2:
+            routes.commandCreated(pobj);
+            break;
+        case 3:
+            relay.unpackRelay(pobj);
+            break;
+        case 4:
+            routes.commandDestroy(pobj);
+            break;
+        case 5:
+            routes.commandOpen(pobj);
+            break;
+        case 6:
+            routes.commandOpened(pobj);
+            break;
+        case 7:
+            routes.commandOpenFailed(pobj);
+            break;
+        case 8:
+            routes.commandCreateFailed(pobj);
+            break;
+    }
+
 }
 
 module.exports = {

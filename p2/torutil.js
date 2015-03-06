@@ -9,8 +9,33 @@ function parseRegistrations(reg) {
     return retVal;
 }
 
+function isCommandCell(pkt) {
+    return false;
+}
+
+function isRelayCell(pkt) {
+    return false;
+}
+
+function getCircuitNumberEven() {
+    var val = Math.floor((Math.random() * 99999) + 1);
+    if (val % 2 !== 0) {
+        val += 1;
+    }
+    return val;
+}
+function getCircuitNumberEven() {
+    var val = Math.floor((Math.random() * 99999) + 1);
+    if (val % 2 === 0) {
+        val += 1;
+    }
+    return val;
+}
+
 
 
 module.exports = {
-    parseRegistrations: parseRegistrations
+    parseRegistrations: parseRegistrations,
+    isCommandCell: isCommandCell,
+    isRelayCell: isRelayCell
 };

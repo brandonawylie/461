@@ -29,10 +29,37 @@ require('dns').lookup(require('os').hostname(), function (err, add, fam) {
   routerAddress = add;
 });
 
+routingTable = {};
+streamTable  = {};
+
 var server = net.createServer({allowHalfOpen: true}, function(incomingSocket) {
     util.log(TAG + "Received Incoming Socket from host " + incomingSocket.remoteAddress + ":" + incomingSocket.remotePort);
     // determine if form tor or browser
-    
+    var circuitNum = getRandomCircuitNumberOdd();
+    if (!routingTable.hasOwnProperty(socket)) {
+        util.log(TAG + "Incoming Socket has no routing match, archiving under " + circuitNum);
+        routingTable[incomingSocket] = circuitNum;
+        routingTable[circuitNum] = incomingSocket;
+    }
+
+    pkt = '';
+    incomingSocket.on('data', function(data) {
+        pkt += data;
+    });
+
+    incomingSocket.on('end', function(data) {
+        util.log(TAG + "Recieved end from host with complete data recv: " + pkt);
+
+
+        var buf = new Buffer(message);
+        var type = buf.readUInt8(2);
+
+        if (data.toString().toLowerCase().indexOf("http") >= 0) {
+
+        } else {
+
+        }
+    });
 });
 
 getTorRegistrations(function(data) {
