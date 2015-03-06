@@ -7,15 +7,6 @@ var spawn = require('child_process').spawn;
 var TAG = "command_relay.js: ";
 var PORT = 1337;
 
-// 512 bytes long (padded w/ 0's, or sent in sequence)
-// 
-        var buf = new Buffer(message);
-        var magic      = buf.readUInt16BE(0);
-        var version    = buf.readUInt8(2);
-        var command    = buf.readUInt8(3);
-        var sequence   = buf.readUInt32BE(4);
-        var session_id = buf.readUInt32BE(8);
-
 var OPEN = 5;
 var OPENED = 6;
 var OPEN_FAILED = 7;
@@ -26,26 +17,105 @@ var DESTROY = 4;
 var RELAY = 3;
 var SIZE = 512;
 
+var fakeBuf = createOpenCell(12, 551414, 3245235);
+console.log(fakeBuf);
+
 function createOpenCell(circ_id, opener_id, opened_id) {
     var buf = new Buffer(SIZE);
     buf.writeUInt16BE(circ_id, 0);
-    buf.writeUInt8BE(OPEN, 2);
+    buf.writeUInt8(OPEN, 2);
     buf.writeUInt32BE(opener_id, 3);
-    buf.writeUInt32BE(opened_id, 5);
+    buf.writeUInt32BE(opened_id, 7);
+    var position = 11;
     // Fill buffer with 0's
+    for (i = position; i < SIZE; i++) {
+        buf.writeUInt8(0, i);
+    }
+    return buf
 }
 
 function createOpenedCell(circ_id, opener_id, opened_id) {
-
+    var buf = new Buffer(SIZE);
+    buf.writeUInt16BE(circ_id, 0);
+    buf.writeUInt8(OPENED, 2);
+    buf.writeUInt32BE(opener_id, 3);
+    buf.writeUInt32BE(opened_id, 7);
+    var position = 11;
+    // Fill buffer with 0's
+    for (i = position; i < SIZE; i++) {
+        buf.writeUInt8(0, i);
+    }
+    return buf
 }
 
+function createOpenFailedCell(circ_id, opener_id, opened_id) {
+    var buf = new Buffer(SIZE);
+    buf.writeUInt16BE(circ_id, 0);
+    buf.writeUInt8(OPEN_FAILED, 2);
+    buf.writeUInt32BE(opener_id, 3);
+    buf.writeUInt32BE(opened_id, 7);
+    var position = 11;
+    // Fill buffer with 0's
+    for (i = position; i < SIZE; i++) {
+        buf.writeUInt8(0, i);
+    }
+    return buf
+}
 
+function createCreateCell(circ_id) {
+    var buf = new Buffer(SIZE);
+    buf.writeUInt16BE(circ_id, 0);
+    buf.writeUInt8(CREATE, 2);
+    var position = 3;
+    // Fill buffer with 0's
+    for (i = position; i < SIZE; i++) {
+        buf.writeUInt8(0, i);
+    }
+    return buf
+}
 
+function createCreatedCell(circ_id) {
+    var buf = new Buffer(SIZE);
+    buf.writeUInt16BE(circ_id, 0);
+    buf.writeUInt8(CREATED, 2);
+    var position = 3;
+    // Fill buffer with 0's
+    for (i = position; i < SIZE; i++) {
+        buf.writeUInt8(0, i);
+    }
+    return buf
+}
 
+function createCreateFailedCell(circ_id) {
+    var buf = new Buffer(SIZE);
+    buf.writeUInt16BE(circ_id, 0);
+    buf.writeUInt8(CREATE_FAILED, 2);
+    var position = 3;
+    // Fill buffer with 0's
+    for (i = position; i < SIZE; i++) {
+        buf.writeUInt8(0, i);
+    }
+    return buf
+}
 
+function createDestroyCell(circ_id) {
+    var buf = new Buffer(SIZE);
+    buf.writeUInt16BE(circ_id, 0);
+    buf.writeUInt8(DESTROY, 2);
+    var position = 3;
+    // Fill buffer with 0's
+    for (i = position; i < SIZE; i++) {
+        buf.writeUInt8(0, i);
+    }
+    return buf
+}
 
-
-
-
-
-
+module.exports = {
+    createOpenCell: createOpenCell,
+    createOpenedCell: createOpenedCell,
+    createOpenFailedCell: createOpenFailedCell,
+    createCreateCell: createCreateCell,
+    createCreatedCell: createCreatedCell,
+    createCreateFailedCell: createCreateFailedCell,
+    createDestroyCell: createDestroyCell
+};
