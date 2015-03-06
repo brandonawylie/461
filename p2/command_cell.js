@@ -4,7 +4,7 @@ var url  = require('url');
 var util = require('util');
 var spawn = require('child_process').spawn;
 var routes = require('./routes');
-var relay = require('./command_relay');
+var relay = require('./relay_cell');
 
 var TAG = "command_relay.js: ";
 var PORT = 1337;
@@ -88,13 +88,14 @@ function createDestroyCell(circ_id) {
 }
 
 function fillZeros(buffer, start) {
+    var buf = new Buffer(SIZE);
     for (i = start; i < SIZE; i++) {
         buf.writeUInt8(0, i);
     }
     return buf;
 }
 
-function unpack(pkt) {
+function unpack(pkt, socket) {
     var pobj = {
         "CircuitID":    null,
         "CommandType":  null,
@@ -126,7 +127,7 @@ function unpack(pkt) {
             routes.commandDestroy(pobj);
             break;
         case 5:
-            routes.commandOpen(pobj);
+            routes.commandOpen(pobj, socket);
             break;
         case 6:
             routes.commandOpened(pobj);
