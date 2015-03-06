@@ -1,0 +1,4 @@
+-Relay cell unpack
+-Circuit creation
+    -Socket connecting strangely
+    -Routes.js methods for making it work

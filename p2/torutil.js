@@ -24,7 +24,7 @@ function getCircuitNumberEven() {
     }
     return val;
 }
-function getCircuitNumberEven() {
+function getCircuitNumberOdd() {
     var val = Math.floor((Math.random() * 99999) + 1);
     if (val % 2 === 0) {
         val += 1;
@@ -32,10 +32,8 @@ function getCircuitNumberEven() {
     return val;
 }
 
-
-
 module.exports = {
     parseRegistrations: parseRegistrations,
     isCommandCell: isCommandCell,
-    isRelayCell: isRelayCell
+    isRelayCell: isRelayCell,
 };

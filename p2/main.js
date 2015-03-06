@@ -19,7 +19,7 @@ var torName = "Tor61Router";
 var groupNum = 5316;
 var instanceNum = Math.floor((Math.random() * 9999) + 1);
 var router_name = torName + "-" + groupNum + "-" + instanceNum;
-agentID = Math.floor((Math.random() * 9999) + 1);
+var agentID = Math.floor((Math.random() * 9999) + 1);
 
 // TAG ourselves to log
 var TAG = router_name + ": main.js: ";
@@ -89,30 +89,32 @@ function createCircuit(data) {
              currentCircuit[0][0] + ", " + currentCircuit[1][0] + ", " + currentCircuit[2][0]);
 
     var circuitNum = Math.floor((Math.random() * 9999) + 1);
-
     // send to cell 1
     socketTable[currentCircuit[0][2]] = net.createConnection(currentCircuit[0][1], currentCircuit[0][0], function() {
         util.log(TAG + "Successfully created connection from " + 
                  agentID + " to " + currentCircuit[0][0] + ":" + currentCircuit[0][1]);
         // send open cell
+        util.log(TAG + "--->    Sending open cell with router: " + currentCircuit[0]);
         socketTable[currentCircuit[0][2]].write(command.createOpenCell(circuitNum, agentID, currentCircuit[0][2]), function() {
+            util.log(TAG + "--->    Sending create cell with router: " + currentCircuit[0]);
             socketTable[currentCircuit[0][2]].write(command.createCreateCell(circuitNum));
         });
 
+        // send to cell 2
+        util.log(TAG + "--->    Sending relay to router: " + currentCircuit[1]);
+        socketTable[currentCircuit[0][2]].write(relay.createExtendCell(circuitNum, 0, currentCircuit[1][0], currentCircuit[1][1], currentCircuit[1][2]));
+
+        // send to cell 3
+        util.log(TAG + "--->    Sending relay to router: " + currentCircuit[2]);
+        socketTable[currentCircuit[0][2]].write(relay.createExtendCell(circuitNum, 0, currentCircuit[2][0], currentCircuit[2][1], currentCircuit[1][2]));
     });
     
-
-    // send to cell 2
-    socketTable[currentCircuit[1][2]].write(relay.createExtendCell(circuitNum, 0, currentCircuit[1][0], currentCircuit[1][1]));
-
-    // send to cell 3
-    ocketTable[currentCircuit[2][2]].write(relay.createExtendCell(circuitNum, 0, currentCircuit[2][0], currentCircuit[2][1]));
 }
 
 function registerRouter(port) {
 
     // Currently has dummy registration info
-    var regClient = spawn('python', ['./registration_client.py', port, router_name, routerNumber]);
+    var regClient = spawn('python', ['./registration_client.py', port, router_name, agentID]);
 
     util.log(TAG + "registering: in progress");
     function endChild() {
