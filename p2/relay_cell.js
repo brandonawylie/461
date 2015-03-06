@@ -126,6 +126,55 @@ function fillZeros(buffer, start) {
     return buffer;
 }
 
+function unpack(pkt, obj) {
+    // This is the layout
+    // var pobj = {
+    //     "CircuitID":    null,
+    //     "CommandType":  null,
+    //     "AgentIDBegin": null,
+    //     "AgentIDEnd":   null,
+    //     "StreamID":     null,
+    //     "Digest":       null,
+    //     "BodyLength":   null,
+    //     "Relay": {
+    //         "Command":  null,
+    //         "Body":     null
+    //     }    
+    // };
+    obj.StreamID = pkt.readUInt16BE(3);
+    obj.BodyLength = pkt.readUInt16BE(11);
+    obj.Relay.Command = pkt.readUInt8(13);
+    obj.Relay.Body = pkt.read('utf8', 14, 14 + obj.BodyLength);
+
+    switch(obj.Relay.Command) {
+        case 1:
+            routes.relayBegin();
+            break;
+        case 2:
+            routes.relayData();
+            break;
+        case 3:
+            routes.relayEnd();
+            break;
+        case 4:
+            routes.relayConnected();
+            break;
+        case 6:
+            routes.relayExtend();
+            break;
+        case 7:
+            routes.relayExtended();
+            break;
+        case 0x0b:
+            routes.relayBeginFailed();
+            break;
+        case 0x0c:
+            routes.relayExtendFailed();
+            break;
+
+    }
+}
+
 module.exports = {
     createBeginCell: createBeginCell,
     createDataCell: createDataCell,

@@ -51,7 +51,35 @@ function commandOpenFailed(obj) {
 
 }
 
-function commandCreateFailed(obj) {
+function relayBegin() {
+
+}
+
+function relayData() {
+
+}
+
+function relayEnd() {
+
+}
+
+function relayConnected() {
+
+}
+
+function relayExtend() {
+
+}
+
+function relayExtended() {
+
+}
+
+function relayBeginFailed() {
+
+}
+
+function relayExtendFailed() {
 
 }
 
@@ -62,5 +90,12 @@ module.exports = {
     commandDestroy: commandDestroy,
     commandOpen: commandOpen,
     commandOpened: commandOpened,
-    commandOpenFailed: commandOpenFailed
-}
+    commandOpenFailed: commandOpenFailed,
+    relayBegin: relayBegin,
+    relayData: relayData,
+    relayEnd: relayEnd,
+    relayConnected: relayConnected,
+    relayExtended: relayExtended,
+    relayBeginFailed: relayBeginFailed,
+    relayExtendFailed: relayExtendFailed
+};
