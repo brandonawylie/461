@@ -8,23 +8,6 @@ var TAG = "routes.js: ";
 var PORT = 1337;
 
 function commandCreate(obj) {
-
-}
-
-function commandCreated(obj) {
-
-}
-
-function commandCreateFailed(obj) {
-
-}
-
-function commandDestroy(obj) {
-
-}
-
-function commandOpen(obj, socket) {
-    var cID = torutil.getCircuitNumberEven();
     var map_a = {
         "AgentID": obj.AgentIDBegin,
         "circuitNum": obj.CircuitID
@@ -33,12 +16,42 @@ function commandOpen(obj, socket) {
         "AgentID": obj.AgentIDEnd,
         "circuitNum": obj.CircuitID
     };
+
     if (!routingTable.hasOwnProperty(map_a) || !routingTable.hasOwnProperty(map_b)) {
         util.log(TAG + "Incoming Socket has no routing match, archiving under " + circuitNum);
         routingTable[map_a] = map_b;
         routingTable[map_b] = map_a;
         
     }
+}
+
+function commandCreated(obj) {
+    var map_a = {
+        "AgentID": obj.AgentIDBegin,
+        "circuitNum": obj.CircuitID
+    };
+    var map_b = {
+        "AgentID": obj.AgentIDEnd,
+        "circuitNum": obj.CircuitID
+    };
+
+    if (!routingTable.hasOwnProperty(map_a) || !routingTable.hasOwnProperty(map_b)) {
+        util.log(TAG + "Incoming Socket has no routing match, archiving under " + circuitNum);
+        routingTable[map_a] = map_b;
+        routingTable[map_b] = map_a;
+        
+    }
+}
+
+function commandCreateFailed(obj) {
+    //TODO implement this
+}
+
+function commandDestroy(obj) {
+    //TODO implement this
+}
+
+function commandOpen(obj, socket) {
     if (!socketTable.hasOwnProperty(obj.AgentIDBegin)) {
         socketTable[obj.AgentIDBegin] = socket;
     }
@@ -50,43 +63,47 @@ function commandOpen(obj, socket) {
 }
 
 function commandOpened(obj) {
-    callbackTable[[obj.CircuitID, obj.AgentIDBegin]]();
+    var circuitNum = Math.floor((Math.random() * 9999) + 1);
+
+    socketTable[obj.AgentIDEnd].write(command.createCreateCell(circuitNum), function() {
+        
+    });
 }
 
 function commandOpenFailed(obj) {
-
+    //TODO implement this
 }
 
 function relayBegin() {
-
+    //TODO implement this
 }
 
 function relayData() {
-
+    //TODO implement this
 }
 
 function relayEnd() {
-
+    //TODO implement this
 }
 
 function relayConnected() {
-
+    //TODO implement this
 }
 
 function relayExtend() {
-
+    //TODO implement this
 }
 
 function relayExtended() {
-
+    //TODO implement this
 }
 
 function relayBeginFailed() {
-
+    //TODO implement this
 }
 
 function relayExtendFailed() {
-
+    //TODO implement this
 }
 
 module.exports = {

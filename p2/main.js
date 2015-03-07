@@ -31,9 +31,9 @@ require('dns').lookup(require('os').hostname(), function (err, add, fam) {
 });
 
 // (circuit no, agent no) => (circuit no b, agent no b)
-routingTable = {};
-socketTable  = {};
-streamTable  = {};
+routingTable  = {};
+socketTable   = {};
+streamTable   = {};
 
 var tor_server = net.createServer({allowHalfOpen: true}, function(incomingSocket) {
     util.log(TAG + "Received Incoming Socket from tor router " + incomingSocket.remoteAddress + ":" + incomingSocket.remotePort);
@@ -107,6 +107,7 @@ function createCircuit(data) {
              currentCircuit[0][0] + ", " + currentCircuit[1][0] + ", " + currentCircuit[2][0]);
 
     var circuitNum = Math.floor((Math.random() * 9999) + 1);
+
     // send to cell 1
     socketTable[currentCircuit[0][2]] = net.connect(currentCircuit[0][1], currentCircuit[0][0], function() {
         util.log(TAG + "Successfully created connection from " + 
