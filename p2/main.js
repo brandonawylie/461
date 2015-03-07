@@ -99,7 +99,8 @@ function createCircuit(data) {
     util.log(TAG + "Creating circuit...");
     var currentCircuit = [];
     for (var i = 0; i < 3; i++) {
-        currentCircuit.push(torRegistrations[Math.floor((Math.random() * torRegistrations.length))]);
+        //currentCircuit.push(torRegistrations[Math.floor((Math.random() * torRegistrations.length))]);
+        currentCircuit.push(['127.0.0.1', '1337', agentID]);
     }
     console.log(currentCircuit);
     util.log(TAG + "Chose 4 random routers with ip addresses: " + 
@@ -107,7 +108,7 @@ function createCircuit(data) {
 
     var circuitNum = Math.floor((Math.random() * 9999) + 1);
     // send to cell 1
-    socketTable[currentCircuit[0][2]] = net.createConnection(currentCircuit[0][1], currentCircuit[0][0], function() {
+    socketTable[currentCircuit[0][2]] = net.connect(currentCircuit[0][1], currentCircuit[0][0], function() {
         util.log(TAG + "Successfully created connection from " + 
                  agentID + " to " + currentCircuit[0][0] + ":" + currentCircuit[0][1]);
         // send open cell

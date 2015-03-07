@@ -31,6 +31,7 @@ function createOpenCell(circ_id, opener_id, opened_id) {
 
 function createOpenedCell(circ_id, opener_id, opened_id) {
     var buf = new Buffer(SIZE);
+    // TODO write zeros instead
     buf.writeUInt16BE(circ_id, 0);
     buf.writeUInt8(OPENED, 2);
     buf.writeUInt32BE(opener_id, 3);
@@ -118,7 +119,7 @@ function unpack(pkt, socket) {
             routes.commandCreated(pobj);
             break;
         case 3:
-            relay.unpackRelay(pobj);
+            relay.unpack(pkt, pobj);
             break;
         case 4:
             routes.commandDestroy(pobj);

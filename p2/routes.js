@@ -24,6 +24,7 @@ function commandDestroy(obj) {
 }
 
 function commandOpen(obj, socket) {
+    var cID = torutil.getCircuitNumberEven();
     var map_a = {
         "AgentID": obj.AgentIDBegin,
         "circuitNum": obj.CircuitID
@@ -41,10 +42,15 @@ function commandOpen(obj, socket) {
     if (!socketTable.hasOwnProperty(obj.AgentIDBegin)) {
         socketTable[obj.AgentIDBegin] = socket;
     }
+
+    util.log(TAG + " open was a success, sending opened back");
+    socketTable[agentID].write(command.createOpenedCell(obj.AgentIDBegin, obj.AgentIDEnd), function() {
+        util.log(TAG + " sending opened successful");
+    });
 }
 
 function commandOpened(obj) {
-
+    callbackTable[[obj.CircuitID, obj.AgentIDBegin]]();
 }
 
 function commandOpenFailed(obj) {
