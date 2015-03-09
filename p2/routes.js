@@ -2,7 +2,8 @@ var net = require('net');
 var http = require('http');
 var url  = require('url');
 var util = require('util');
-var globals = require('./main.js');
+var command = require('./command_cell');
+//var globals = require('./main.js');
 var spawn = require('child_process').spawn;
 
 var TAG = "routes.js: ";
@@ -54,14 +55,16 @@ function commandDestroy(obj) {
 }
 
 function commandOpen(obj, socket) {
+    var openedCell = command.createOpenedCell(obj.AgentIDBegin, obj.AgentIDEnd);
     socketTable = globals.socketTable();
     console.log("now socket table" + socketTable);
-    if (!globals.socketTable.hasOwnProperty(obj.AgentIDBegin)) {
-        globals.socketTable[obj.AgentIDBegin] = socket;
+    if (!socketTable.hasOwnProperty(obj.AgentIDBegin)) {
+        socketTable[obj.AgentIDBegin] = socket;
     }
 
     util.log(TAG + " open was a success, sending opened back");
-    globals.socketTable[agentID].write(command.createOpenedCell(obj.AgentIDBegin, obj.AgentIDEnd), function() {
+    var openedCell = command.createOpenedCell(obj.AgentIDBegin, obj.AgentIDEnd);
+    globals.socketTable[obj.AgentIDBegin].write(openedCell, function() {
         util.log(TAG + " sending opened successful");
     });
 }
@@ -69,9 +72,9 @@ function commandOpen(obj, socket) {
 function commandOpened(obj) {
     var circuitNum = Math.floor((Math.random() * 9999) + 1);
 
-    socketTable[obj.AgentIDEnd].write(command.createCreateCell(circuitNum), function() {
+    // socketTable[obj.AgentIDEnd].write(command.createCreateCell(circuitNum), function() {
         
-    });
+    // });
 }
 
 function commandOpenFailed(obj) {

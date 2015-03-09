@@ -34,8 +34,7 @@ require('dns').lookup(require('os').hostname(), function (err, add, fam) {
 routingTable  = {};
 socketTable   = {};
 streamTable   = {};
-module.exports = {
-};
+module.exports = {};
 exports.routingTable = function() {
         return routingTable;
     };
@@ -136,7 +135,8 @@ function createCircuit(data) {
         // send open cell
         console.log("current socket table: " + socketTable);
         util.log(TAG + "--->    Sending open cell with router: " + currentCircuit[0]);
-        socketTable[currentCircuit[0][2]].write(command.createOpenCell(circuitNum, agentID, currentCircuit[0][2]), function() {
+        var openCell = command.createOpenCell(agentID, currentCircuit[0][2]);
+        socketTable[currentCircuit[0][2]].write(openCell, function() {
             // send create cell
             //util.log(TAG + "--->    Sending create cell with router: " + currentCircuit[0]);
             //socketTable[currentCircuit[0][2]].write(command.createCreateCell(circuitNum));
