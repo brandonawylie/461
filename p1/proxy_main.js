@@ -8,7 +8,6 @@ if (process.argv.length !== 3) {
     process.exit(1);
 }
 
-var HOST = '127.0.0.1';
 var PORT = process.argv[2];
 
 net.createServer({allowHalfOpen: true}, function(sock) {
@@ -133,9 +132,9 @@ net.createServer({allowHalfOpen: true}, function(sock) {
         });
     });
 
-}).listen(PORT, HOST);
+}).listen(PORT);
 
-util.log("Proxy listening on " + HOST + ":" + PORT);
+util.log("Proxy listening on " + PORT);
 
 function parseArgs(arg_arr) {
     var retVal = {};
