@@ -156,7 +156,7 @@ function registerRouter(port) {
 function getTorRegistrations(callback) {
     util.log(TAG + "fetching TOR registrations: in progress");
     var fetchClient = spawn('python', ['./fetch.py',
-                                  'Tor61',
+                                  'Tor61Router-5316',
                  ]
     );
     var allData = '';
