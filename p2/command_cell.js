@@ -19,9 +19,9 @@ var DESTROY = 4;
 var RELAY = 3;
 var SIZE = 512;
 
-function createOpenCell(circ_id, opener_id, opened_id) {
+function createOpenCell(opener_id, opened_id) {
     var buf = new Buffer(SIZE);
-    buf.writeUInt16BE(circ_id, 0);
+    buf.writeUInt16BE(0x0000, 0);
     buf.writeUInt8(OPEN, 2);
     buf.writeUInt32BE(opener_id, 3);
     buf.writeUInt32BE(opened_id, 7);
@@ -29,10 +29,10 @@ function createOpenCell(circ_id, opener_id, opened_id) {
     return fillZeros(buf, 11);
 }
 
-function createOpenedCell(circ_id, opener_id, opened_id) {
+function createOpenedCell(opener_id, opened_id) {
     var buf = new Buffer(SIZE);
     // TODO write zeros instead
-    buf.writeUInt16BE(circ_id, 0);
+    buf.writeUInt16BE(0x0000, 0);
     buf.writeUInt8(OPENED, 2);
     buf.writeUInt32BE(opener_id, 3);
     buf.writeUInt32BE(opened_id, 7);

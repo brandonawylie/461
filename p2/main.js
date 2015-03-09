@@ -37,7 +37,6 @@ streamTable   = {};
 
 var tor_server = net.createServer({allowHalfOpen: true}, function(incomingSocket) {
     util.log(TAG + "Received Incoming Socket from tor router " + incomingSocket.remoteAddress + ":" + incomingSocket.remotePort);
-    // determine if form tor or browser
     var circuitNum = getRandomCircuitNumberOdd();
 
 
@@ -55,16 +54,19 @@ var tor_server = net.createServer({allowHalfOpen: true}, function(incomingSocket
         }
     });
 
+    // This shouldn't happen
     incomingSocket.on('end', function(data) {
         util.log(TAG + "Recieved end from host");
         torutil.removeSocketFromTable(incomingSocket);
     });
 });
 
+// Proxy
 var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSocket) {
     util.log(TAG + "Received Incoming Socket from broswer " + incomingSocket.remoteAddress + ":" + incomingSocket.remotePort);
     pkt = '';
     incomingSocket.on('data', function(data) {
+        // TODO: Create stream, pack data up in to cells and send it accross stream
         pkt += data;
     });
 
@@ -102,13 +104,13 @@ function createCircuit(data) {
         //currentCircuit.push(torRegistrations[Math.floor((Math.random() * torRegistrations.length))]);
         currentCircuit.push(['127.0.0.1', '1337', agentID]);
     }
-    console.log(currentCircuit);
     util.log(TAG + "Chose 4 random routers with ip addresses: " + 
              currentCircuit[0][0] + ", " + currentCircuit[1][0] + ", " + currentCircuit[2][0]);
 
     var circuitNum = Math.floor((Math.random() * 9999) + 1);
 
     // send to cell 1
+    // TODO: Figure out how to store state and send these pieces sequentially
     socketTable[currentCircuit[0][2]] = net.connect(currentCircuit[0][1], currentCircuit[0][0], function() {
         util.log(TAG + "Successfully created connection from " + 
                  agentID + " to " + currentCircuit[0][0] + ":" + currentCircuit[0][1]);

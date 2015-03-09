@@ -1,4 +1,17 @@
--Relay cell unpack
 -Circuit creation
-    -Socket connecting strangely
-    -Routes.js methods for making it work
+    -Routes.js methods for circuit creationg
+        -commandCreate
+        -commandCreated
+        -commandOpen
+        -commandOpened
+        -relayExtend
+        -relayExtended
+    -Create data structure to store state of router
+        -Possibility: circ_id -> callbackFunction
+            ex: opened comes back, then create, created comes back, then relay extend
+-Proxy piece from browser
+
+
+
+PROBLEMS/QUESTIONS?
+-->
