@@ -44,6 +44,9 @@ exports.socketTable = function() {
 exports.streamTable = function() {
         return streamTable;
     };
+exports.agentID = function() {
+    return agentID;
+};
 
 var tor_server = net.createServer({allowHalfOpen: true}, function(incomingSocket) {
     util.log(TAG + "Received Incoming Socket from tor router " + incomingSocket.remoteAddress + ":" + incomingSocket.remotePort);
@@ -55,19 +58,20 @@ var tor_server = net.createServer({allowHalfOpen: true}, function(incomingSocket
         util.log(TAG + "<---    Received cell from tor router "+ incomingSocket.remoteAddress + ":" + incomingSocket.remotePort);
         
         socketBuffer = Buffer.concat([socketBuffer, data]);
+        var buf;
         // TODO: Slicing doesn't seem to be working, talk to Rushahb?
         if (socketBuffer.length > 512) {
             // More data than one cell
-            var buf = socketBuffer.slice(0, 512);
+            buf = socketBuffer.slice(0, 512);
             var pkt = buf.toString();
             // util.log(TAG + "Recieved data from host with complete data recv: " + pkt);
-            command.unpack(buf, incomingSocket);
+            torutil.unpackCommand(buf, incomingSocket);
             socketBuffer = socketBuffer.slice(512);
         } else if (socketBuffer.length < 512) {
             // Only concatenate
         } else {
-            var buf = socketBuffer.slice(0, 512);
-            command.unpack(buf, incomingSocket);
+            buf = socketBuffer.slice(0, 512);
+            torutil.unpackCommand(buf, incomingSocket);
             socketBuffer = socketBuffer.slice(512);
         }
     });

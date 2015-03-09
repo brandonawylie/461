@@ -3,14 +3,15 @@ var http = require('http');
 var url  = require('url');
 var util = require('util');
 var command = require('./command_cell');
-//var globals = require('./main.js');
+var relay = require('./relay_cell');
+var globals = require('./main');
 var spawn = require('child_process').spawn;
-
 var TAG = "routes.js: ";
 var PORT = 1337;
 
 // TODO: Discuss router table format--> Spec says to do socket/circuit no. instead of id/circuit no.
 function commandCreate(obj) {
+    routingTable = globals.routingTable();
     var map_a = {
         "AgentID": obj.AgentIDBegin,
         "circuitNum": obj.CircuitID
@@ -29,6 +30,7 @@ function commandCreate(obj) {
 }
 
 function commandCreated(obj) {
+    outingTable = globals.routingTable();
     var map_a = {
         "AgentID": obj.AgentIDBegin,
         "circuitNum": obj.CircuitID
@@ -57,24 +59,28 @@ function commandDestroy(obj) {
 function commandOpen(obj, socket) {
     var openedCell = command.createOpenedCell(obj.AgentIDBegin, obj.AgentIDEnd);
     socketTable = globals.socketTable();
+    agentID = globals.agentID();
     console.log("now socket table" + socketTable);
-    if (!socketTable.hasOwnProperty(obj.AgentIDBegin)) {
-        socketTable[obj.AgentIDBegin] = socket;
+    if (!globals.socketTable.hasOwnProperty(obj.AgentIDBegin)) {
+        util.log(TAG + "Open Cell recv'd, adding socket to table");
+        globals.socketTable[obj.AgentIDBegin] = socket;
+    } else {
+        util.log(TAG + "Open Cell recv'd with existing socket already open: ERROR");
     }
 
     util.log(TAG + " open was a success, sending opened back");
-    var openedCell = command.createOpenedCell(obj.AgentIDBegin, obj.AgentIDEnd);
-    globals.socketTable[obj.AgentIDBegin].write(openedCell, function() {
+    globals.socketTable[obj.AgentIDBegin].write(command.createOpenedCell(obj.AgentIDBegin, obj.AgentIDEnd), function() {
         util.log(TAG + " sending opened successful");
     });
 }
 
 function commandOpened(obj) {
+    util.log(TAG + " Opened received, sending a create cell");
     var circuitNum = Math.floor((Math.random() * 9999) + 1);
 
-    // socketTable[obj.AgentIDEnd].write(command.createCreateCell(circuitNum), function() {
-        
-    // });
+    socketTable[obj.AgentIDBegin].write(command.createCreateCell(circuitNum), function() {
+        util.log(TAG + " Create Cell sent successfully ");
+    });
 }
 
 function commandOpenFailed(obj) {
