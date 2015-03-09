@@ -93,51 +93,7 @@ function fillZeros(buffer, start) {
     return buffer;
 }
 
-function unpack(pkt, socket) {
-    var pobj = {
-        "CircuitID":    null,
-        "CommandType":  null,
-        "AgentIDBegin": null,
-        "AgentIDEnd":   null,
-        "StreamID":     null,
-        "Digest":       null,
-        "BodyLength":   null,
-        "Relay": {
-            "Command":  null,
-            "Body":     null
-        }    
-    };
-    pobj.CircuitID =   pkt.readUInt16BE(0);
-    pobj.CommandType = pkt.readUInt8(2);
-    util.log(TAG + "received packet on circ #: " + pobj.CircuitID + ", of command: " + pobj.CommandType);
-    switch(pobj.CommandType) {
-        case 1:
-            routes.commandCreate(pobj);
-            break;
-        case 2:
-            routes.commandCreated(pobj);
-            break;
-        case 3:
-            relay.unpack(pkt, pobj);
-            break;
-        case 4:
-            routes.commandDestroy(pobj);
-            break;
-        case 5:
-            routes.commandOpen(pobj, socket);
-            break;
-        case 6:
-            routes.commandOpened(pobj);
-            break;
-        case 7:
-            routes.commandOpenFailed(pobj);
-            break;
-        case 8:
-            routes.commandCreateFailed(pobj);
-            break;
-    }
 
-}
 
 module.exports = {
     createOpenCell: createOpenCell,
@@ -146,6 +102,5 @@ module.exports = {
     createCreateCell: createCreateCell,
     createCreatedCell: createCreatedCell,
     createCreateFailedCell: createCreateFailedCell,
-    createDestroyCell: createDestroyCell,
-    unpack: unpack
+    createDestroyCell: createDestroyCell
 };

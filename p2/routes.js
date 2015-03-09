@@ -2,9 +2,9 @@ var net = require('net');
 var http = require('http');
 var url  = require('url');
 var util = require('util');
-var globals = require('./main.js');
+var command = require('./command_cell');
+var globals = require('./main');
 var spawn = require('child_process').spawn;
-
 var TAG = "routes.js: ";
 var PORT = 1337;
 
@@ -55,13 +55,17 @@ function commandDestroy(obj) {
 
 function commandOpen(obj, socket) {
     socketTable = globals.socketTable();
+    agentID = globals.agentID();
     console.log("now socket table" + socketTable);
     if (!globals.socketTable.hasOwnProperty(obj.AgentIDBegin)) {
+        util.log(TAG + "Open Cell recv'd, adding socket to table");
         globals.socketTable[obj.AgentIDBegin] = socket;
+    } else {
+        util.log(TAG + "Open Cell recv'd with existing socket already open: ERROR");
     }
 
     util.log(TAG + " open was a success, sending opened back");
-    globals.socketTable[agentID].write(command.createOpenedCell(obj.AgentIDBegin, obj.AgentIDEnd), function() {
+    globals.socketTable[obj.AgentIDBegin].write(command.createOpenedCell(obj.AgentIDBegin, obj.AgentIDEnd), function() {
         util.log(TAG + " sending opened successful");
     });
 }
