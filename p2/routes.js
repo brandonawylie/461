@@ -3,6 +3,7 @@ var http = require('http');
 var url  = require('url');
 var util = require('util');
 var command = require('./command_cell');
+var relay = require('./relay_cell');
 var globals = require('./main');
 var spawn = require('child_process').spawn;
 var TAG = "routes.js: ";
@@ -10,6 +11,7 @@ var PORT = 1337;
 
 // TODO: Discuss router table format--> Spec says to do socket/circuit no. instead of id/circuit no.
 function commandCreate(obj) {
+    routingTable = globals.routingTable();
     var map_a = {
         "AgentID": obj.AgentIDBegin,
         "circuitNum": obj.CircuitID
@@ -28,6 +30,7 @@ function commandCreate(obj) {
 }
 
 function commandCreated(obj) {
+    outingTable = globals.routingTable();
     var map_a = {
         "AgentID": obj.AgentIDBegin,
         "circuitNum": obj.CircuitID
@@ -71,10 +74,11 @@ function commandOpen(obj, socket) {
 }
 
 function commandOpened(obj) {
+    util.log(TAG + " Opened received, sending a create cell");
     var circuitNum = Math.floor((Math.random() * 9999) + 1);
 
-    socketTable[obj.AgentIDEnd].write(command.createCreateCell(circuitNum), function() {
-        
+    socketTable[obj.AgentIDBegin].write(command.createCreateCell(circuitNum), function() {
+        util.log(TAG + " Create Cell sent successfully ");
     });
 }
 

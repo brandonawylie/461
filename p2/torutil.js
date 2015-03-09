@@ -112,7 +112,7 @@ function unpackRelay(pkt, obj) {
     obj.BodyLength = pkt.readUInt16BE(11);
     obj.Relay.Command = pkt.readUInt8(13);
     obj.Relay.Body = pkt.read('utf8', 14, 14 + obj.BodyLength);
-
+    util.log(TAG + "recv'd relay with cmd: " + obj.Relay.Command);
     switch(obj.Relay.Command) {
         case 1:
             routes.relayBegin();
