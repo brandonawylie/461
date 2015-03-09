@@ -56,7 +56,7 @@ var tor_server = net.createServer({allowHalfOpen: true}, function(incomingSocket
     var socketBuffer = new Buffer(0);
     incomingSocket.on('data', function(data) {
         util.log(TAG + "<---    Received cell from tor router "+ incomingSocket.remoteAddress + ":" + incomingSocket.remotePort);
-        
+        incomingSocket.id = 927
         socketBuffer = Buffer.concat([socketBuffer, data]);
         var buf;
         // TODO: Slicing doesn't seem to be working, talk to Rushahb?
@@ -133,17 +133,15 @@ function createCircuit(data) {
 
     // send to cell 1
     // TODO: Figure out how to store state and send these pieces sequentially
-    socketTable[currentCircuit[0][2]] = net.connect(currentCircuit[0][1], currentCircuit[0][0], function() {
+    outgoingSocket = net.connect(currentCircuit[0][1], currentCircuit[0][0], function() {
         util.log(TAG + "Successfully created connection from " + 
                  agentID + " to " + currentCircuit[0][0] + ":" + currentCircuit[0][1]);
         // send open cell
         console.log("current socket table: " + socketTable);
         util.log(TAG + "--->    Sending open cell with router: " + currentCircuit[0]);
         var openCell = command.createOpenCell(agentID, currentCircuit[0][2]);
-        socketTable[currentCircuit[0][2]].write(openCell, function() {
-            // send create cell
-            //util.log(TAG + "--->    Sending create cell with router: " + currentCircuit[0]);
-            //socketTable[currentCircuit[0][2]].write(command.createCreateCell(circuitNum));
+        outgoingSocket.write(openCell, function() {
+            util.log(TAG + "Open sent Successfully");
         });
 
         // send to cell 2

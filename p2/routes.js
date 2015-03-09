@@ -22,7 +22,7 @@ function commandCreate(obj) {
     };
 
     if (!routingTable.hasOwnProperty(map_a) || !routingTable.hasOwnProperty(map_b)) {
-        util.log(TAG + "Incoming Socket has no routing match, archiving under " + circuitNum);
+        //util.log(TAG + "Incoming Socket has no routing match, archiving under " + circuitNum);
         routingTable[map_a] = map_b;
         routingTable[map_b] = map_a;
         
@@ -30,7 +30,7 @@ function commandCreate(obj) {
 }
 
 function commandCreated(obj) {
-    outingTable = globals.routingTable();
+    routingTable = globals.routingTable();
     var map_a = {
         "AgentID": obj.AgentIDBegin,
         "circuitNum": obj.CircuitID
@@ -58,21 +58,19 @@ function commandDestroy(obj) {
 
 function commandOpen(obj, socket) {
     var openedCell = command.createOpenedCell(obj.AgentIDBegin, obj.AgentIDEnd);
-    socketTable = globals.socketTable();
     agentID = globals.agentID();
-    console.log("now socket table" + socketTable);
-    if (!socketTable.hasOwnProperty(obj.AgentIDBegin)) {
-        util.log(TAG + "Open Cell recv'd, adding socket to table");
-        socketTable[obj.AgentIDBegin] = socket;
-    } else {
-        util.log(TAG + "Open Cell recv'd with existing socket already open: ERROR");
-    }
-
-    util.log(TAG + " open was a success, sending opened back with agent id: " + obj.AgentIDBegin);
+    //console.log("now socket table" + socketTable);
+    // if (!socketTable.hasOwnProperty(obj.AgentIDBegin)) {
+    //     util.log(TAG + "Open Cell recv'd, adding socket to table");
+    //     socketTable[obj.AgentIDBegin] = socket;
+    // } else {
+    //     util.log(TAG + "Open Cell recv'd with existing socket already open");
+    // }
+    util.log(TAG + " open was a successfully recvd, sending opened to agent id: " + obj.AgentIDBegin);
 
     //console.log(socketTable);
-    socketTable[obj.AgentIDEnd].write(command.createOpenedCell(obj.AgentIDBegin, obj.AgentIDEnd), function() {
-        util.log(TAG + " sending opened successful");
+    socket.write(command.createOpenedCell(obj.AgentIDBegin, obj.AgentIDEnd), function() {
+        util.log(TAG + " sending opened successful to socket id:" + socket.id);
     });
 }
 
@@ -81,8 +79,8 @@ function commandOpened(obj) {
     util.log(TAG + " Opened received, sending a create cell");
     var circuitNum = Math.floor((Math.random() * 9999) + 1);
 
-    socketTable[obj.AgentIDBegin].write(command.createCreateCell(circuitNum), function() {
-        util.log(TAG + " Create Cell sent successfully ");
+    socketTable[obj.AgentIDEnd].write(command.createCreateCell(circuitNum), function() {
+        util.log(TAG + " Create Cell sent successfully on");
     });
 }
 
