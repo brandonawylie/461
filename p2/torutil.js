@@ -47,6 +47,11 @@ function removeSocketFromTable(sock) {
     }
 }
 
+function parseAgentIds(pkt, obj) {
+    obj.AgentIDBegin = pkt.readUInt32BE(3);
+    obj.AgentIDEnd = pkt.readUInt32BE(7);
+}
+
 function unpackCommand(pkt, socket) {
     var pobj = {
         "CircuitID":    null,
@@ -78,12 +83,15 @@ function unpackCommand(pkt, socket) {
             routes.commandDestroy(pobj);
             break;
         case 5:
+            parseAgentIds(pkt, pobj);
             routes.commandOpen(pobj, socket);
             break;
         case 6:
+            parseAgentIds(pkt, pobj);
             routes.commandOpened(pobj);
             break;
         case 7:
+            parseAgentIds(pkt, pobj);
             routes.commandOpenFailed(pobj);
             break;
         case 8:

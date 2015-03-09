@@ -61,20 +61,23 @@ function commandOpen(obj, socket) {
     socketTable = globals.socketTable();
     agentID = globals.agentID();
     console.log("now socket table" + socketTable);
-    if (!globals.socketTable.hasOwnProperty(obj.AgentIDBegin)) {
+    if (!socketTable.hasOwnProperty(obj.AgentIDBegin)) {
         util.log(TAG + "Open Cell recv'd, adding socket to table");
-        globals.socketTable[obj.AgentIDBegin] = socket;
+        socketTable[obj.AgentIDBegin] = socket;
     } else {
         util.log(TAG + "Open Cell recv'd with existing socket already open: ERROR");
     }
 
-    util.log(TAG + " open was a success, sending opened back");
-    globals.socketTable[obj.AgentIDBegin].write(command.createOpenedCell(obj.AgentIDBegin, obj.AgentIDEnd), function() {
+    util.log(TAG + " open was a success, sending opened back with agent id: " + obj.AgentIDBegin);
+
+    //console.log(socketTable);
+    socketTable[obj.AgentIDEnd].write(command.createOpenedCell(obj.AgentIDBegin, obj.AgentIDEnd), function() {
         util.log(TAG + " sending opened successful");
     });
 }
 
 function commandOpened(obj) {
+    socketTable = globals.socketTable();
     util.log(TAG + " Opened received, sending a create cell");
     var circuitNum = Math.floor((Math.random() * 9999) + 1);
 
