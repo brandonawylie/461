@@ -87,8 +87,8 @@ function createDestroyCell(circ_id) {
 
 function fillZeros(buffer, start) {
     var buf = new Buffer(SIZE);
-    for (i = start; i < SIZE; i++) {
-        buffer.writeUInt8(0, i);
+    for (var i = start; i < SIZE; i++) {
+        buffer.writeUInt8(0x00, i);
     }
     return buffer;
 }
@@ -107,10 +107,9 @@ function unpack(pkt, socket) {
             "Body":     null
         }    
     };
-
     pobj.CircuitID =   pkt.readUInt16BE(0);
     pobj.CommandType = pkt.readUInt8(2);
-    
+    util.log(TAG + "received packet on circ #: " + pobj.CircuitID + ", of command: " + pobj.CommandType);
     switch(pobj.CommandType) {
         case 1:
             routes.commandCreate(pobj);
@@ -147,5 +146,6 @@ module.exports = {
     createCreateCell: createCreateCell,
     createCreatedCell: createCreatedCell,
     createCreateFailedCell: createCreateFailedCell,
-    createDestroyCell: createDestroyCell
+    createDestroyCell: createDestroyCell,
+    unpack: unpack
 };

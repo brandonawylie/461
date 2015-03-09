@@ -2,11 +2,13 @@ var net = require('net');
 var http = require('http');
 var url  = require('url');
 var util = require('util');
+var globals = require('./main.js');
 var spawn = require('child_process').spawn;
 
 var TAG = "routes.js: ";
 var PORT = 1337;
 
+// TODO: Discuss router table format--> Spec says to do socket/circuit no. instead of id/circuit no.
 function commandCreate(obj) {
     var map_a = {
         "AgentID": obj.AgentIDBegin,
@@ -52,12 +54,13 @@ function commandDestroy(obj) {
 }
 
 function commandOpen(obj, socket) {
-    if (!socketTable.hasOwnProperty(obj.AgentIDBegin)) {
-        socketTable[obj.AgentIDBegin] = socket;
+    console.log("now socket table" + globals.socketTable);
+    if (!globals.socketTable.hasOwnProperty(obj.AgentIDBegin)) {
+        globals.socketTable[obj.AgentIDBegin] = socket;
     }
 
     util.log(TAG + " open was a success, sending opened back");
-    socketTable[agentID].write(command.createOpenedCell(obj.AgentIDBegin, obj.AgentIDEnd), function() {
+    globals.socketTable[agentID].write(command.createOpenedCell(obj.AgentIDBegin, obj.AgentIDEnd), function() {
         util.log(TAG + " sending opened successful");
     });
 }

@@ -17,14 +17,14 @@ function isRelayCell(pkt) {
     return false;
 }
 
-function getCircuitNumberEven() {
+function getRandomCircuitNumberEven() {
     var val = Math.floor((Math.random() * 99999) + 1);
     if (val % 2 !== 0) {
         val += 1;
     }
     return val;
 }
-function getCircuitNumberOdd() {
+function getRandomCircuitNumberOdd() {
     var val = Math.floor((Math.random() * 99999) + 1);
     if (val % 2 === 0) {
         val += 1;
@@ -49,5 +49,7 @@ module.exports = {
     parseRegistrations: parseRegistrations,
     isCommandCell: isCommandCell,
     isRelayCell: isRelayCell,
-    removeSocketFromTable: removeSocketFromTable
+    removeSocketFromTable: removeSocketFromTable,
+    getRandomCircuitNumberEven: getRandomCircuitNumberEven,
+    getRandomCircuitNumberOdd: getRandomCircuitNumberOdd
 };

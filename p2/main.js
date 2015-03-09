@@ -34,23 +34,36 @@ require('dns').lookup(require('os').hostname(), function (err, add, fam) {
 routingTable  = {};
 socketTable   = {};
 streamTable   = {};
+module.exports = {
+    routingTable: routingTable,
+    socketTable: socketTable,
+    streamTable: streamTable
+}
 
 var tor_server = net.createServer({allowHalfOpen: true}, function(incomingSocket) {
     util.log(TAG + "Received Incoming Socket from tor router " + incomingSocket.remoteAddress + ":" + incomingSocket.remotePort);
-    var circuitNum = getRandomCircuitNumberOdd();
+    var circuitNum = torutil.getRandomCircuitNumberEven();
 
-
-    var socketBuffer = new Buffer();
+    // Assigned arbitrary size
+    var socketBuffer = new Buffer(0);
     incomingSocket.on('data', function(data) {
+        util.log(TAG + "<---    Received cell from tor router "+ incomingSocket.remoteAddress + ":" + incomingSocket.remotePort);
+        
         socketBuffer = Buffer.concat([socketBuffer, data]);
-
+        // TODO: Slicing doesn't seem to be working, talk to Rushahb?
         if (socketBuffer.length > 512) {
-            util.log(TAG + "Recieved end from host with complete data recv: " + pkt);
-
+            // More data than one cell
             var buf = socketBuffer.slice(0, 512);
             var pkt = buf.toString();
+            // util.log(TAG + "Recieved data from host with complete data recv: " + pkt);
+            command.unpack(buf, incomingSocket);
             socketBuffer = socketBuffer.slice(512);
-            command.unpack(pkt, incomingSocket);
+        } else if (socketBuffer.length < 512) {
+            // Only concatenate
+        } else {
+            var buf = socketBuffer.slice(0, 512);
+            command.unpack(buf, incomingSocket);
+            socketBuffer = socketBuffer.slice(512);
         }
     });
 
@@ -63,7 +76,7 @@ var tor_server = net.createServer({allowHalfOpen: true}, function(incomingSocket
 
 // Proxy
 var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSocket) {
-    util.log(TAG + "Received Incoming Socket from broswer " + incomingSocket.remoteAddress + ":" + incomingSocket.remotePort);
+    util.log(TAG + "Received Incoming Socket from browser " + incomingSocket.remoteAddress + ":" + incomingSocket.remotePort);
     pkt = '';
     incomingSocket.on('data', function(data) {
         // TODO: Create stream, pack data up in to cells and send it accross stream
@@ -102,7 +115,7 @@ function createCircuit(data) {
     var currentCircuit = [];
     for (var i = 0; i < 3; i++) {
         //currentCircuit.push(torRegistrations[Math.floor((Math.random() * torRegistrations.length))]);
-        currentCircuit.push(['127.0.0.1', '1337', agentID]);
+        currentCircuit.push(['127.0.0.1', '1338', agentID]);
     }
     util.log(TAG + "Chose 4 random routers with ip addresses: " + 
              currentCircuit[0][0] + ", " + currentCircuit[1][0] + ", " + currentCircuit[2][0]);
@@ -115,19 +128,21 @@ function createCircuit(data) {
         util.log(TAG + "Successfully created connection from " + 
                  agentID + " to " + currentCircuit[0][0] + ":" + currentCircuit[0][1]);
         // send open cell
+        console.log("current socket table: " + socketTable);
         util.log(TAG + "--->    Sending open cell with router: " + currentCircuit[0]);
         socketTable[currentCircuit[0][2]].write(command.createOpenCell(circuitNum, agentID, currentCircuit[0][2]), function() {
-            util.log(TAG + "--->    Sending create cell with router: " + currentCircuit[0]);
-            socketTable[currentCircuit[0][2]].write(command.createCreateCell(circuitNum));
+            // send create cell
+            //util.log(TAG + "--->    Sending create cell with router: " + currentCircuit[0]);
+            //socketTable[currentCircuit[0][2]].write(command.createCreateCell(circuitNum));
         });
 
         // send to cell 2
-        util.log(TAG + "--->    Sending relay to router: " + currentCircuit[1]);
-        socketTable[currentCircuit[0][2]].write(relay.createExtendCell(circuitNum, 0, currentCircuit[1][0], currentCircuit[1][1], currentCircuit[1][2]));
+        // util.log(TAG + "--->    Sending relay to router: " + currentCircuit[1]);
+        // socketTable[currentCircuit[0][2]].write(relay.createExtendCell(circuitNum, 0, currentCircuit[1][0], currentCircuit[1][1], currentCircuit[1][2]));
 
-        // send to cell 3
-        util.log(TAG + "--->    Sending relay to router: " + currentCircuit[2]);
-        socketTable[currentCircuit[0][2]].write(relay.createExtendCell(circuitNum, 0, currentCircuit[2][0], currentCircuit[2][1], currentCircuit[1][2]));
+        // // send to cell 3
+        // util.log(TAG + "--->    Sending relay to router: " + currentCircuit[2]);
+        // socketTable[currentCircuit[0][2]].write(relay.createExtendCell(circuitNum, 0, currentCircuit[2][0], currentCircuit[2][1], currentCircuit[1][2]));
     });
     
 }
