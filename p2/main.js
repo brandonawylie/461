@@ -35,10 +35,16 @@ routingTable  = {};
 socketTable   = {};
 streamTable   = {};
 module.exports = {
-    routingTable: routingTable,
-    socketTable: socketTable,
-    streamTable: streamTable
-}
+};
+exports.routingTable = function() {
+        return routingTable;
+    };
+exports.socketTable = function() {
+        return socketTable;
+    };
+exports.streamTable = function() {
+        return streamTable;
+    };
 
 var tor_server = net.createServer({allowHalfOpen: true}, function(incomingSocket) {
     util.log(TAG + "Received Incoming Socket from tor router " + incomingSocket.remoteAddress + ":" + incomingSocket.remotePort);

@@ -54,7 +54,8 @@ function commandDestroy(obj) {
 }
 
 function commandOpen(obj, socket) {
-    console.log("now socket table" + globals.socketTable);
+    socketTable = globals.socketTable();
+    console.log("now socket table" + socketTable);
     if (!globals.socketTable.hasOwnProperty(obj.AgentIDBegin)) {
         globals.socketTable[obj.AgentIDBegin] = socket;
     }
