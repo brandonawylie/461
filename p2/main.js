@@ -63,7 +63,7 @@ var tor_server = net.createServer({allowHalfOpen: true}, function(incomingSocket
         while (socketBuffer.length >= 512) {
             // More data than one cell
             buf = socketBuffer.slice(0, 512);
-            var pkt = buf.toString();
+            //var pkt = buf.toString();
             // util.log(TAG + "Recieved data from host with complete data recv: " + pkt);
             torutil.unpackCommand(buf, incomingSocket);
             socketBuffer = socketBuffer.slice(512);
@@ -127,17 +127,18 @@ function createCircuit(data) {
 
     // send to cell 1
     // TODO: Figure out how to store state and send these pieces sequentially
-    socketTable[[currentCircuit[0][2], 1]] = net.connect(currentCircuit[0][1], currentCircuit[0][0], function() {
+    
+    socket = net.connect(currentCircuit[0][1], currentCircuit[0][0], function() {
         util.log(TAG + "Successfully created connection from " + 
                  agentID + " to " + currentCircuit[0][0] + ":" + currentCircuit[0][1]);
         // send open cell
         console.log("current socket table: " + socketTable);
         util.log(TAG + "--->    Sending open cell with router: " + currentCircuit[0]);
 
-        
+        socketTable[[currentCircuit[0][2], 1]] = socket;
         // Assigned arbitrary size
         var socketBuffer = new Buffer(0);
-        socketTable[[currentCircuit[0][2], 1]].on('data', function(data) {
+        socket.on('data', function(data) {
             util.log(TAG + "<---    Received cell from tor router "+ socketTable[[currentCircuit[0][2], 1]].remoteAddress + ":" + socketTable[[currentCircuit[0][2], 1]].remotePort);
             
             socketBuffer = Buffer.concat([socketBuffer, data]);
@@ -146,16 +147,52 @@ function createCircuit(data) {
             while (socketBuffer.length >= 512) {
                 // More data than one cell
                 buf = socketBuffer.slice(0, 512);
-                var pkt = buf.toString();
+                //var pkt = buf.toString();
                 // util.log(TAG + "Recieved data from host with complete data recv: " + pkt);
                 torutil.unpackCommand(buf, socketTable[[currentCircuit[0][2], 1]]);
                 socketBuffer = socketBuffer.slice(512);
             }
         });
+        
 
-        socketTable[[currentCircuit[0][2], 1]].write(command.createOpenCell(circuitNum, agentID, currentCircuit[0][2]), function() {
-            // send create cell
+        // Write the create cell, wait for the created event
+        socket.write(command.createOpenCell(circuitNum, agentID, currentCircuit[0][2]), function() {
 
+            // Opened event, send the create cell
+            socket.on('opened', function() {
+                util.log(TAG + "socket on opened was called");
+                socket.Opened = true;
+
+                // Write the create cell, and wait for the created event
+                socket.write(command.createCreateCell(circuitNum), function() {
+
+                    socket.on('created', function() {
+                        util.log(TAG + "socket on created was called");
+                        socket.Created = true;
+                        socket.write(relay.createExtendCell(circuitNum, 0, currentCircuit[1][0], currentCircuit[1][1], currentCircuit[1][2]), function() {
+
+                            /*
+                                Once created, the source router will want to relay more extends to the existing connection
+                                so we keep state within the socket objects (and hope it works!!)
+                            */
+                            socket.on('extended', function() {
+                                if (socket.hasOwnProperty("ExtendedCount")) {
+                                    socket.ExtendedCount += 1;
+                                } else {
+                                    socket.ExtendedCount = 1;
+                                }
+                                var currentIndex = socket.ExtendedCount + 1;
+                                if (socket.ExtendedCount < 2) {
+                                    socket.write(relay.createExtendCell(circuitNum, 0, currentCircuit[currentIndex][0], currentCircuit[currentIndex][1], currentCircuit[currentIndex][2]), function() {
+
+                                    });
+                                }
+                            });
+                        });
+                    });
+                });
+                
+            });
         });
 
         // send to cell 2
