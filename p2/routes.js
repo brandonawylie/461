@@ -10,27 +10,30 @@ var TAG = "routes.js: ";
 var PORT = 1337;
 
 // TODO: Discuss router table format--> Spec says to do socket/circuit no. instead of id/circuit no.
-function commandCreate(obj) {
+function commandCreate(obj, socket) {
+    util.log(TAG + "Create Cell recv'd");
     routingTable = globals.routingTable();
+    socketTable = globals.socketTable();
     var map_a = {
-        "AgentID": obj.AgentIDBegin,
+        "Socket": socket,
         "circuitNum": obj.CircuitID
     };
-    var map_b = {
-        "AgentID": obj.AgentIDEnd,
-        "circuitNum": obj.CircuitID
-    };
+    //var map_b = ;
 
-    if (!routingTable.hasOwnProperty(map_a) || !routingTable.hasOwnProperty(map_b)) {
+    if (!routingTable.hasOwnProperty(map_a)) {
         //util.log(TAG + "Incoming Socket has no routing match, archiving under " + circuitNum);
-        routingTable[map_a] = map_b;
-        routingTable[map_b] = map_a;
+        routingTable[map_a] = null;
         
     }
+
+    socket.write(command.createCreatedCell(obj.AgentIDBegin, obj.AgentIDEnd), function() {
+        util.log(TAG + " sending created cell successful");
+    });
 }
 
 function commandCreated(obj) {
-    routingTable = globals.routingTable();
+    util.log(TAG + "created Cell recv'd");
+    outingTable = globals.routingTable();
     var map_a = {
         "AgentID": obj.AgentIDBegin,
         "circuitNum": obj.CircuitID
@@ -57,14 +60,15 @@ function commandDestroy(obj) {
 }
 
 function commandOpen(obj, socket) {
-    var openedCell = command.createOpenedCell(obj.AgentIDBegin, obj.AgentIDEnd);
+    util.log(TAG + "Open Cell recv'd");
+    socketTable = globals.socketTable();
     agentID = globals.agentID();
     console.log("now socket table" + socketTable);
     if (!socketTable.hasOwnProperty([obj.AgentIDBegin, 0])) {
         util.log(TAG + "Open Cell recv'd, adding socket to table");
         socketTable[[obj.AgentIDBegin, 0]] = socket;
     } else {
-        util.log(TAG + "Open Cell recv'd with existing socket already open: ERROR");
+        util.log(TAG + "Open Cell recv'd, with existing socket already open: ERROR");
     }
 
     util.log(TAG + " open was a success, sending opened back with agent id: " + obj.AgentIDBegin);
@@ -80,7 +84,7 @@ function commandOpened(obj) {
     util.log(TAG + " Opened received, sending a create cell");
     var circuitNum = Math.floor((Math.random() * 9999) + 1);
 
-    socketTable[[obj.AgentIDBegin, 0]].write(command.createCreateCell(circuitNum), function() {
+    socketTable[[obj.AgentIDEnd, 1]].write(command.createCreateCell(circuitNum), function() {
         util.log(TAG + " Create Cell sent successfully ");
     });
 }

@@ -71,10 +71,10 @@ function unpackCommand(pkt, socket) {
     util.log(TAG + "received packet on circ #: " + pobj.CircuitID + ", of command: " + pobj.CommandType);
     switch(pobj.CommandType) {
         case 1:
-            routes.commandCreate(pobj);
+            routes.commandCreate(pobj, socket);
             break;
         case 2:
-            routes.commandCreated(pobj);
+            routes.commandCreated(pobj, socket);
             break;
         case 3:
             relay.unpack(pkt, pobj);
