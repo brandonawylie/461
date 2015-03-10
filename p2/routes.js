@@ -151,8 +151,16 @@ function relayExtend(obj, socket) {
     }
 }
 
-function relayExtended() {
-    
+function relayExtended(obj, socket) {
+    var routingTable = globals.routingTable();
+    var socketTable = globals.socketTable();
+    var agentID = globals.agentID();
+
+    var entry = routingTable[[socket, obj.CircuitID]];
+
+    entry[0].write(relay.createExtendedCell(entry[1]), function() {
+        util.log(TAG + "RelayExtended sent successfully");
+    })
 }
 
 function relayBeginFailed() {
