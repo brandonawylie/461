@@ -178,15 +178,16 @@ function relayExtend(obj, socket) {
             });
         } else {
             console.log("there is socket connection");
+            console.log(obj);
             // CASE 2: We have a socket connection, send create
-            extendSocket.write(command.createCreateCell(obj.circuitNum), function() {
+            extendSocket.write(command.createCreateCell(obj.CircuitID), function() {
                 util.log(TAG + "At relay extend, sent create");
 
                 // Once opened & sent create circuit with the final router, we need to return the relay extended
                 extendSocket.on('created', function() {
                     util.log(TAG + "At relay extend, created was received");
                     extendSocket.Created = true;
-                    var extendedCell = createExtendedCell(obj.CircuitID);
+                    var extendedCell = relay.createExtendedCell(obj.CircuitID);
 
                     // Send relay extended back the opposite way on the circuit
                     socket.write(extendedCell, function() {
@@ -200,7 +201,7 @@ function relayExtend(obj, socket) {
         extendSocket.on('created', function() {
                     util.log(TAG + "At relay extend, created was received");
                     extendSocket.Created = true;
-                    var extendedCell = createExtendedCell(obj.CircuitID);
+                    var extendedCell = relay.createExtendedCell(obj.CircuitID);
 
                     // Send relay extended back the opposite way on the circuit
                     socket.write(extendedCell, function() {
@@ -223,6 +224,8 @@ function relayExtended(obj, socket) {
     var agentID = globals.agentID();
 
     var entry = routingTable[[socket, obj.CircuitID]];
+    console.log(routingTable);
+    console.log(entry);
 
     entry[0].write(relay.createExtendedCell(entry[1]), function() {
         util.log(TAG + "RelayExtended sent successfully");

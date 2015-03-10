@@ -136,11 +136,11 @@ function unpackRelay(pkt, obj, socket) {
             routes.relayConnected();
             break;
         case 6:
-            obj.Relay.AgentID = pkt.readUInt32BE(10 + obj.BodyLength)
+            obj.Relay.AgentID = pkt.readUInt32BE(10 + obj.BodyLength);
             routes.relayExtend(obj, socket);
             break;
         case 7:
-            routes.relayExtended();
+            routes.relayExtended(obj, socket);
             break;
         case 0x0b:
             routes.relayBeginFailed();
