@@ -119,7 +119,8 @@ function unpackRelay(pkt, obj, socket) {
     obj.StreamID = pkt.readUInt16BE(3);
     obj.BodyLength = pkt.readUInt16BE(11);
     obj.Relay.Command = pkt.readUInt8(13);
-    obj.Relay.Body = pkt.toString('utf8', 14, 14 + obj.BodyLength);
+    var endBody = Math.max(0, obj.BodyLength - 4);
+    obj.Relay.Body = pkt.toString('utf8', 14, 14 + endBody);
     util.log(TAG + "recv'd relay with cmd: " + obj.Relay.Command);
     switch(obj.Relay.Command) {
         case 1:

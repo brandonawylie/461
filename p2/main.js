@@ -130,9 +130,8 @@ function createCircuit(data) {
     
     socket = net.connect(currentCircuit[0][1], currentCircuit[0][0], function() {
         util.log(TAG + "Successfully created connection from " + 
-                 agentID + " to " + currentCircuit[0][0] + ":" + currentCircuit[0][1]);
+                 agentID + " to " + currentCircuit[0][0] + ":" + currentCircuit[0][1] + ", " + currentCircuit[0][2]);
         // send open cell
-        console.log("current socket table: " + socketTable);
         util.log(TAG + "--->    Sending open cell with router: " + currentCircuit[0]);
 
         socketTable[[currentCircuit[0][2], 1]] = socket;
@@ -156,7 +155,7 @@ function createCircuit(data) {
         
 
         // Write the create cell, wait for the created event
-        socket.write(command.createOpenCell(circuitNum, agentID, currentCircuit[0][2]), function() {
+        socket.write(command.createOpenCell(agentID, currentCircuit[0][2]), function() {
 
             // Opened event, send the create cell
             var openedCallback =  function() {

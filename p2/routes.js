@@ -39,7 +39,7 @@ function commandCreated(obj, socket) {
         // TODO: Update routing table for incoming
     };
     var map_b = {
-        "AgentID": socket,
+        "Socket": socket,
         "circuitNum": obj.CircuitID
     };
 
@@ -71,7 +71,7 @@ function commandOpen(obj, socket) {
     agentID = globals.agentID();
     console.log("now socket table" + socketTable);
     if (!socketTable.hasOwnProperty([obj.AgentIDBegin, 0])) {
-        util.log(TAG + "Open Cell recv'd, adding socket to table");
+        util.log(TAG + "Open Cell recv'd, adding socket to table w/ agentID: " + obj.AgentIDBegin);
         socketTable[[obj.AgentIDBegin, 0]] = socket;
     } else {
         util.log(TAG + "Open Cell recv'd, with existing socket already open: ERROR");
@@ -87,7 +87,7 @@ function commandOpen(obj, socket) {
 
 function commandOpened(obj, socket) {
     socketTable = globals.socketTable();
-    socketTable[obj.AgentIDBegin, 0] = socket;
+    //socketTable[[obj.AgentIDBegin, 0]] = socket;
     util.log(TAG + " Opened received, sending a create cell");
     var circuitNum = Math.floor((Math.random() * 9999) + 1);
 
@@ -116,7 +116,8 @@ function relayConnected() {
 
 function relayExtend(obj, socket) {
     var routingTable = globals.routingTable();
-    var socketTable = globals.socketTable();
+    socketTable = globals.socketTable();
+    console.log(socketTable);
     var agentID = globals.agentID();
     var map_a = {
         "Socket": socket,
@@ -124,12 +125,14 @@ function relayExtend(obj, socket) {
     };
     var body = obj.Relay.Body;
     var bodyLength = obj.BodyLength;
-    var extendAgentID = obj.Relay.AgentID;
+    var extendAgentID = parseInt(obj.Relay.AgentID);
     var parsedBody = relay.parseRelayExtendBody(body);
     var extendIP = parsedBody.ip;
-    var extendPort = parsedBody.portNum;
+    var extendPort = parseInt(parsedBody.portNum);
     var extendSocket = getSocketFromTable(socketTable, extendAgentID);
-
+    console.log("agent id: " + extendAgentID);
+    console.log("ip: " + extendIP);
+    console.log("port: " + extendPort);
     util.log(TAG + "Recvd relay extend cell");
     // console.log("parsedBody: " + extendIP + ":" + extendPort + ", agendID: " + extendAgentID);
 
@@ -143,7 +146,7 @@ function relayExtend(obj, socket) {
 
                 util.log(TAG + "Extend socket created successfully, adding to socket table");
                 // Add socket to socket table
-                socketTable[extendAgentID, 1] = extendSocket;
+                socketTable[[extendAgentID, 1]] = extendSocket;
 
                 util.log(TAG + "At relay extend, Sending open cell")
                 extendSocket.write(command.createOpenCell(agentID, extendAgentID), function() {
@@ -244,6 +247,7 @@ function relayExtendFailed() {
 }
 
 function getSocketFromTable(socketTable, agentID) {
+    console.log("Socket table w/ agent id: " + socketTable[agentID, 1] + socketTable[agentID, 0]);
     if(socketTable.hasOwnProperty[agentID, 1]) {
         // Contains socket that was created outgoing
         return socketTable[agentID, 1];
