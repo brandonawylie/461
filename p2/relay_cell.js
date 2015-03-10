@@ -130,9 +130,7 @@ function parseRelayExtendBody(body) {
     parsedBody = {};
     body = body.split(":");
     parsedBody.ip = body[0];
-    body = body[1].split('\0');
-    parsedBody.portNum = body[0];
-    parsedBody.agendID = body[1];
+    parsedBody.portNum = body[1];
     return parsedBody;
 }
 

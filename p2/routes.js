@@ -117,20 +117,22 @@ function relayExtend(obj, socket) {
     var routingTable = globals.routingTable();
     var socketTable = globals.socketTable();
     var agentID = globals.agentID();
-    console.log(obj);
-    var incomingEdge = {
+    var map_a = {
         "Socket": socket,
         "circuitNum": obj.CircuitID
     };
     util.log(TAG + "Recvd relay extend cell");
     var body = obj.Relay.Body;
+    var bodyLength = obj.BodyLength;
+    var extendAgentID = obj.Relay.AgentID;
     var parsedBody = relay.parseRelayExtendBody(body);
+    console.log("parsedBody: " + parsedBody.ip + parsedBody.portNum + extendAgentID);
 
-    if (!routingTable.hasOwnProperty(map_a)) {
+    if (routingTable[map_a] == null) {
         // End of circuit
         if (!socketTable.hasOwnProperty[parsedBody.agentID, 1]) {
             // CASE 1: No socket connection, send open & then create
-            socket.write(command.createOpenCell(agentID, parsedBody.agentID), function() {
+            socket.write(command.createOpenCell(agentID, extendAgentID), function() {
                 util.log(TAG + "RelayExtend reached end of circuit & sent open");
             });
         } else {
@@ -142,7 +144,7 @@ function relayExtend(obj, socket) {
      }  else {
         // Still in circuit, forward the relay extend
         map_b = routingTable[map_a];
-        extendCell = createExtendCell(map_b.circuitNum, parsedBody.ip, parsedBody.portNum, parsedBody.agentID);
+        extendCell = createExtendCell(map_b["circuitNum"], parsedBody.ip, parsedBody.portNum, extendAgentID);
         map_b["Socket"].write(extendCell, function() {
             util.log(TAG + "RelayExtend forwarded");
         });

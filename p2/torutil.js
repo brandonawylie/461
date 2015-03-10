@@ -77,7 +77,7 @@ function unpackCommand(pkt, socket) {
             routes.commandCreated(pobj, socket);
             break;
         case 3:
-            unpackRelay(pkt, pobj);
+            unpackRelay(pkt, pobj, socket);
             break;
         case 4:
             routes.commandDestroy(pobj);
@@ -101,7 +101,7 @@ function unpackCommand(pkt, socket) {
 
 }
 
-function unpackRelay(pkt, obj) {
+function unpackRelay(pkt, obj, socket) {
     // This is the layout
     // var pobj = {
     //     "CircuitID":    null,
@@ -114,7 +114,7 @@ function unpackRelay(pkt, obj) {
     //     "Relay": {
     //         "Command":  null,
     //         "Body":     null
-    //     }    
+    //     } 
     // };
     obj.StreamID = pkt.readUInt16BE(3);
     obj.BodyLength = pkt.readUInt16BE(11);
@@ -129,13 +129,14 @@ function unpackRelay(pkt, obj) {
             routes.relayData();
             break;
         case 3:
-            routes.relayEnd();
+            routes.relayEnd(obj, socket);
             break;
         case 4:
             routes.relayConnected();
             break;
         case 6:
-            routes.relayExtend();
+            obj.Relay.AgentID = pkt.readUInt32BE(10 + obj.BodyLength)
+            routes.relayExtend(obj, socket);
             break;
         case 7:
             routes.relayExtended();
