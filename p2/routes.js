@@ -85,12 +85,12 @@ function commandOpen(obj, socket) {
     });
 }
 
-function commandOpened(obj) {
+function commandOpened(obj, socket) {
     socketTable = globals.socketTable();
     util.log(TAG + " Opened received, sending a create cell");
     var circuitNum = Math.floor((Math.random() * 9999) + 1);
 
-    socketTable[[obj.AgentIDEnd, 1]].emit('opened');
+    socket.emit('opened');
 }
     
 function commandOpenFailed(obj) {
@@ -182,8 +182,16 @@ function relayExtend(obj, socket) {
     }
 }
 
-function relayExtended() {
-    
+function relayExtended(obj, socket) {
+    var routingTable = globals.routingTable();
+    var socketTable = globals.socketTable();
+    var agentID = globals.agentID();
+
+    var entry = routingTable[[socket, obj.CircuitID]];
+
+    entry[0].write(relay.createExtendedCell(entry[1]), function() {
+        util.log(TAG + "RelayExtended sent successfully");
+    });
 }
 
 function relayBeginFailed() {
@@ -192,6 +200,15 @@ function relayBeginFailed() {
 
 function relayExtendFailed() {
     //TODO implement this
+    var routingTable = globals.routingTable();
+    var socketTable = globals.socketTable();
+    var agentID = globals.agentID();
+
+    var entry = routingTable[[socket, obj.CircuitID]];
+
+    entry[0].write(relay.createExtendFailedCell(entry[1]), function() {
+        util.log(TAG + "RelayExtended sent successfully");
+    });
 }
 
 function getSocketFromTable(socketTable, agentID) {
