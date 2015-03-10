@@ -87,6 +87,7 @@ function commandOpen(obj, socket) {
 
 function commandOpened(obj, socket) {
     socketTable = globals.socketTable();
+    socketTable[obj.AgentIDBegin, 0] = socket;
     util.log(TAG + " Opened received, sending a create cell");
     var circuitNum = Math.floor((Math.random() * 9999) + 1);
 
@@ -134,30 +135,61 @@ function relayExtend(obj, socket) {
 
     if (routingTable[map_a] == null) {
         // Reached end of circuit
-        util.log(TAG + "RelayExtend reached end of circuit");
+        util.log(TAG + "At relay extend, reached end of circuit");
         if (extendSocket == null) {
             // CASE 1: No socket connection, send open & then create
-            
+            util.log("At relay extend, no socket connection");
             extendSocket = net.connect(extendPort, extendIP, function() {
+
+                util.log(TAG + "Extend socket created successfully, adding to socket table");
+                // Add socket to socket table
+                socketTable[extendAgentID, 1] = extendSocket;
+
+                util.log(TAG + "At relay extend, Sending open cell")
                 extendSocket.write(command.createOpenCell(agentID, extendAgentID), function() {
                     util.log(TAG + "At relay extend, sent open");
-                });
 
-                // Opened received for this new socket connection
-                extendSocket.on('opened', function() {
-                    util.log(TAG + "At relay extend, opened was received");
-                    extendSocket.Opened = true;
+                    // Opened received for this new socket connection
+                    extendSocket.on('opened', function() {
+                        util.log(TAG + "At relay extend, opened was received");
+                        extendSocket.Opened = true;
 
-                    // Write the create cell
-                    extendSocket.write(command.createCreateCell(obj.circuitNum), function() {
-                        util.log(TAG + "At relay extend, sent create");
+                        // Write the create cell
+                        extendSocket.write(command.createCreateCell(obj.circuitNum), function() {
+                            util.log(TAG + "At relay extend, sent create");
+
+                            // Once opened & sent create circuit with the final router, we need to return the relay extended
+                            extendSocket.on('created', function() {
+                                util.log(TAG + "At relay extend, created was received");
+                                extendSocket.Created = true;
+                                var extendedCell = createExtendedCell(obj.CircuitID);
+
+                                // Send relay extended back the opposite way on the circuit
+                                socket.write(extendedCell, function() {
+                                    util.log(TAG + "<---     Relay extended send back along circuit");
+                                });
+                            });
+                        });
                     });
                 });
             });
         } else {
+            console.log("there is socket connection");
             // CASE 2: We have a socket connection, send create
             extendSocket.write(command.createCreateCell(obj.circuitNum), function() {
                 util.log(TAG + "At relay extend, sent create");
+
+                // Once opened & sent create circuit with the final router, we need to return the relay extended
+                extendSocket.on('created', function() {
+                    util.log(TAG + "At relay extend, created was received");
+                    extendSocket.Created = true;
+                    var extendedCell = createExtendedCell(obj.CircuitID);
+
+                    // Send relay extended back the opposite way on the circuit
+                    socket.write(extendedCell, function() {
+                        util.log(TAG + "<---     Relay extended send back along circuit");
+                    });
+                });
             });
         }
 
