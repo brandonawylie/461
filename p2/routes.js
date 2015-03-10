@@ -121,32 +121,63 @@ function relayExtend(obj, socket) {
         "Socket": socket,
         "circuitNum": obj.CircuitID
     };
-    util.log(TAG + "Recvd relay extend cell");
     var body = obj.Relay.Body;
     var bodyLength = obj.BodyLength;
     var extendAgentID = obj.Relay.AgentID;
     var parsedBody = relay.parseRelayExtendBody(body);
-    console.log("parsedBody: " + parsedBody.ip + parsedBody.portNum + extendAgentID);
+    var extendIP = parsedBody.ip;
+    var extendPort = parsedBody.portNum;
+    var extendSocket = getSocketFromTable(socketTable, extendAgentID);
+
+    util.log(TAG + "Recvd relay extend cell");
+    console.log("parsedBody: " + extendIP + extendPort + extendAgentID);
 
     if (routingTable[map_a] == null) {
-        // End of circuit
-        if (!socketTable.hasOwnProperty[parsedBody.agentID, 1]) {
+        // Reached end of circuit
+        util.log(TAG + "RelayExtend reached end of circuit");
+        if (extendSocket == null) {
             // CASE 1: No socket connection, send open & then create
-            socket.write(command.createOpenCell(agentID, extendAgentID), function() {
-                util.log(TAG + "RelayExtend reached end of circuit & sent open");
+            
+            extendSocket = net.connect(extendPort, extendIP, function() {
+                extendSocket.write(command.createOpenCell(agentID, extendAgentID), function() {
+                    util.log(TAG + "At relay extend, sent open");
+                });
+
+                // Opened received for this new socket connection
+                extendSocket.on('opened', function() {
+                    util.log(TAG + "At relay extend, opened was received");
+                    extendSocket.Opened = true;
+
+                    // Write the create cell
+                    extendSocket.write(command.createCreateCell(obj.circuitNum), function() {
+                        util.log(TAG + "At relay extend, sent create");
+                    });
+                });
             });
         } else {
             // CASE 2: We have a socket connection, send create
-            socket.write(command.createCreateCell(obj.circuitNum), function() {
-                util.log(TAG + "RelayExtend reached end of circuit & sent create");
+            extendSocket.write(command.createCreateCell(obj.circuitNum), function() {
+                util.log(TAG + "At relay extend, sent create");
             });
         }
+
+        // Once opened & sent create circuit with the final router, we need to return the relay extended
+        extendSocket.on('created', function() {
+                    util.log(TAG + "At relay extend, created was received");
+                    extendSocket.Created = true;
+                    var extendedCell = createExtendedCell(obj.CircuitID);
+
+                    // Send relay extended back the opposite way on the circuit
+                    socket.write(extendedCell, function() {
+                        util.log(TAG + "<---     Relay extended send back along circuit");
+                    });
+        });
      }  else {
-        // Still in circuit, forward the relay extend
+        // MIDDLE ROUTER CASE: Still in circuit, forward the relay extend
         map_b = routingTable[map_a];
-        extendCell = createExtendCell(map_b["circuitNum"], parsedBody.ip, parsedBody.portNum, extendAgentID);
-        map_b["Socket"].write(extendCell, function() {
-            util.log(TAG + "RelayExtend forwarded");
+        extendCell = createExtendCell(map_b.circuitNum, extendIP, extendPort, extendAgentID);
+        map_b.Socket.write(extendCell, function() {
+            util.log(TAG + "At relay extend, forwarded relatyExtend cell");
         });
     }
 }
@@ -163,7 +194,18 @@ function relayExtendFailed() {
     //TODO implement this
 }
 
-
+function getSocketFromTable(socketTable, agentID) {
+    if(socketTable.hasOwnProperty[agentID, 1]) {
+        // Contains socket that was created outgoing
+        return socketTable[agentID, 1];
+    } else if (socketTable.hasOwnProperty[agentID, 0]) {
+        // Contains socket that was created incoming
+        return socketTable[agentID, 0];
+    } else {
+        // No current socket with this router
+        return null;
+    }
+}
 module.exports = {
     commandCreate: commandCreate,
     commandCreated: commandCreated,
