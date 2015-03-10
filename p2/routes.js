@@ -247,13 +247,13 @@ function relayExtendFailed() {
 }
 
 function getSocketFromTable(socketTable, agentID) {
-    console.log("Socket table w/ agent id: " + socketTable[agentID, 1] + socketTable[agentID, 0]);
-    if(socketTable.hasOwnProperty[agentID, 1]) {
+    console.log("Socket table w/ agent id: " + socketTable[[agentID, 1]] + socketTable[[agentID, 0]]);
+    if(socketTable.hasOwnProperty([agentID, 1])) {
         // Contains socket that was created outgoing
-        return socketTable[agentID, 1];
-    } else if (socketTable.hasOwnProperty[agentID, 0]) {
+        return socketTable[[agentID, 1]];
+    } else if (socketTable.hasOwnProperty([agentID, 0])) {
         // Contains socket that was created incoming
-        return socketTable[agentID, 0];
+        return socketTable[[agentID, 0]];
     } else {
         // No current socket with this router
         return null;
