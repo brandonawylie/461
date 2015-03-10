@@ -77,7 +77,7 @@ function unpackCommand(pkt, socket) {
             routes.commandCreated(pobj, socket);
             break;
         case 3:
-            relay.unpack(pkt, pobj);
+            unpackRelay(pkt, pobj);
             break;
         case 4:
             routes.commandDestroy(pobj);
@@ -119,7 +119,7 @@ function unpackRelay(pkt, obj) {
     obj.StreamID = pkt.readUInt16BE(3);
     obj.BodyLength = pkt.readUInt16BE(11);
     obj.Relay.Command = pkt.readUInt8(13);
-    obj.Relay.Body = pkt.read('utf8', 14, 14 + obj.BodyLength);
+    obj.Relay.Body = pkt.toString('utf8', 14, 14 + obj.BodyLength);
     util.log(TAG + "recv'd relay with cmd: " + obj.Relay.Command);
     switch(obj.Relay.Command) {
         case 1:

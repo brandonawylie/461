@@ -31,9 +31,10 @@ function commandCreate(obj, socket) {
     });
 }
 
-function commandCreated(obj) {
+function commandCreated(obj, socket) {
     util.log(TAG + "created Cell recv'd");
-    outingTable = globals.routingTable();
+    routingTable = globals.routingTable();
+    socketTable = globals.socketTable();
     var map_a = {
         "AgentID": obj.AgentIDBegin,
         "circuitNum": obj.CircuitID
@@ -49,6 +50,12 @@ function commandCreated(obj) {
         routingTable[map_b] = map_a;
         
     }
+
+    //console.log(obj.AgentIDEnd);
+    //console.log(socketTable);
+
+    socket.emit('created');
+
 }
 
 function commandCreateFailed(obj) {
@@ -84,9 +91,7 @@ function commandOpened(obj) {
     util.log(TAG + " Opened received, sending a create cell");
     var circuitNum = Math.floor((Math.random() * 9999) + 1);
 
-    socketTable[[obj.AgentIDEnd, 1]].write(command.createCreateCell(circuitNum), function() {
-        util.log(TAG + " Create Cell sent successfully ");
-    });
+    socketTable[[obj.AgentIDEnd, 1]].emit('opened');
 }
     
 function commandOpenFailed(obj) {
@@ -139,5 +144,6 @@ module.exports = {
     relayConnected: relayConnected,
     relayExtended: relayExtended,
     relayBeginFailed: relayBeginFailed,
-    relayExtendFailed: relayExtendFailed
+    relayExtendFailed: relayExtendFailed,
+    relayExtend: relayExtend
 };
