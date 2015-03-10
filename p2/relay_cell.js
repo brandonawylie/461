@@ -67,23 +67,23 @@ function createConnectedCell(circ_id, stream_id) {
     return fillZeros(buf, 14);
 }
 
-function createExtendCell(circ_id, stream_id, ip, port, agent_id) {
+function createExtendCell(circ_id, ip, port, agent_id) {
     // Used for extending a circuit
-    var buf = createBasicRelay(circ_id, stream_id);
+    var buf = createBasicRelay(circ_id, 0x0000);
     var body = ip + ":" + port + '\0';
-    var body_length = body.length;
+    var body_length = body.length + 4;
     buf.writeUInt16BE(body_length, 11);
     buf.writeUInt8(EXTEND, 13);
     buf.write(body, 14);
-    var buf_location = 14 + body_length;
+    var buf_location = 14 + body.length;
     buf.writeUInt32BE(agent_id, buf_location);
     buf_location += 4;
     return fillZeros(buf, buf_location);
 }
 
-function createExtendedCell(circ_id, stream_id) {
+function createExtendedCell(circ_id) {
     // Used for communicating that the circuit was extended
-    var buf = createBasicRelay(circ_id, stream_id);
+    var buf = createBasicRelay(circ_id, 0x0000);
     var body_length = 0;
     buf.writeUInt16BE(body_length, 11);
     buf.writeUInt8(EXTENDED, 13);
@@ -99,9 +99,9 @@ function createBeginFailed(circ_id, stream_id) {
     return fillZeros(buf, 14);
 }
 
-function createExtendFailed(circ_id, stream_id) {
+function createExtendFailed(circ_id) {
     // Failure response to extending a circuit
-    var buf = createBasicRelay(circ_id, stream_id);
+    var buf = createBasicRelay(circ_id, 0x0000);
     var body_length = 0;
     buf.writeUInt16BE(body_length, 11);
     buf.writeUInt8(EXTEND_FAILED, 13);
@@ -126,7 +126,15 @@ function fillZeros(buffer, start) {
     return buffer;
 }
 
-
+function parseRelayExtendBody(body) {
+    parsedBody = {};
+    body = body.split(":");
+    parsedBody.ip = body[0];
+    body = body[1].split('\0');
+    parsedBody.portNum = body[0];
+    parsedBody.agendID = body[1];
+    return parsedBody;
+}
 
 module.exports = {
     createBeginCell: createBeginCell,
@@ -136,5 +144,6 @@ module.exports = {
     createExtendCell: createExtendCell,
     createExtendedCell: createExtendedCell,
     createBeginFailed: createBeginFailed,
-    createExtendFailed: createExtendFailed
+    createExtendFailed: createExtendFailed,
+    parseRelayExtendBody: parseRelayExtendBody
 };

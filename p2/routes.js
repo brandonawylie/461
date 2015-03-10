@@ -31,15 +31,15 @@ function commandCreate(obj, socket) {
     });
 }
 
-function commandCreated(obj) {
+function commandCreated(obj, socket) {
     util.log(TAG + "created Cell recv'd");
     outingTable = globals.routingTable();
+    
     var map_a = {
-        "AgentID": obj.AgentIDBegin,
-        "circuitNum": obj.CircuitID
+        // TODO: Update routing table for incoming
     };
     var map_b = {
-        "AgentID": obj.AgentIDEnd,
+        "AgentID": socket,
         "circuitNum": obj.CircuitID
     };
 
@@ -109,12 +109,43 @@ function relayConnected() {
     //TODO implement this
 }
 
-function relayExtend() {
-    //TODO implement this
+function relayExtend(obj, socket) {
+    var routingTable = globals.routingTable();
+    var socketTable = globals.socketTable();
+    var agentID = globals.agentID();
+    var incomingEdge = {
+        "Socket": socket,
+        "circuitNum": obj.CircuitID
+    };
+    util.log(TAG + "Recvd relay extend cell");
+    var body = obj.Relay.Body;
+    var parsedBody = relay.parseRelayExtendBody(body);
+
+    if (!routingTable.hasOwnProperty(map_a)) {
+        // End of circuit
+        if (!socketTable.hasOwnProperty[parsedBody.agentID, 1]) {
+            // CASE 1: No socket connection, send open & then create
+            socket.write(command.createOpenCell(agentID, parsedBody.agentID), function() {
+                util.log(TAG + "RelayExtend reached end of circuit & sent open");
+            }
+        } else {
+            // CASE 2: We have a socket connection, send create
+            socket.write(command.createCreateCell(obj.circuitNum), function() {
+                util.log(TAG + "RelayExtend reached end of circuit & sent create");
+            }
+        }
+    } else {
+        // Still in circuit, forward the relay extend
+        map_b = routingTable[map_a];
+        extendCell = createExtendCell(map_b.circuitNum, parsedBody.ip, parsedBody.portNum, parsedBody.agentID));
+        map_b["Socket"].write(extendCell, function() {
+            util.log(TAG + "RelayExtend forwarded");
+        }
+    }
 }
 
 function relayExtended() {
-    //TODO implement this
+    
 }
 
 function relayBeginFailed() {
@@ -124,6 +155,7 @@ function relayBeginFailed() {
 function relayExtendFailed() {
     //TODO implement this
 }
+
 
 module.exports = {
     commandCreate: commandCreate,
