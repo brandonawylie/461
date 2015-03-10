@@ -159,14 +159,14 @@ function createCircuit(data) {
         socket.write(command.createOpenCell(circuitNum, agentID, currentCircuit[0][2]), function() {
 
             // Opened event, send the create cell
-            socket.on('opened', function() {
+            var openedCallback =  function() {
                 util.log(TAG + "socket on opened was called");
                 socket.Opened = true;
 
                 // Write the create cell, and wait for the created event
                 socket.write(command.createCreateCell(circuitNum), function() {
 
-                    socket.on('created', function() {
+                    var createdCallback = function() {
                         util.log(TAG + "socket on created was called");
                         socket.Created = true;
                         socket.write(relay.createExtendCell(circuitNum, 0, currentCircuit[1][0], currentCircuit[1][1], currentCircuit[1][2]), function() {
@@ -175,7 +175,7 @@ function createCircuit(data) {
                                 Once created, the source router will want to relay more extends to the existing connection
                                 so we keep state within the socket objects (and hope it works!!)
                             */
-                            socket.on('extended', function() {
+                            var extendedCallback = function() {
                                 if (socket.hasOwnProperty("ExtendedCount")) {
                                     socket.ExtendedCount += 1;
                                 } else {
@@ -186,13 +186,24 @@ function createCircuit(data) {
                                     socket.write(relay.createExtendCell(circuitNum, 0, currentCircuit[currentIndex][0], currentCircuit[currentIndex][1], currentCircuit[currentIndex][2]), function() {
 
                                     });
+                                } else {
+                                    socket.removeListener('extended', extendedCallback);
                                 }
-                            });
+                            };
+                            socket.on('extended', extendedCallback);
                         });
-                    });
+
+                        socket.removeListener('created', createdCallback);
+                    };
+                    socket.on('created', createdCallback);
+                    
                 });
-                
-            });
+
+                socket.removeListener('opened', openedCallback);
+            };
+
+            socket.on('opened', openedCallback);
+            
         });
 
         // send to cell 2
