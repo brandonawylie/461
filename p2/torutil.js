@@ -88,11 +88,11 @@ function unpackCommand(pkt, socket) {
             break;
         case 6:
             parseAgentIds(pkt, pobj);
-            routes.commandOpened(pobj);
+            routes.commandOpened(pobj, socket);
             break;
         case 7:
             parseAgentIds(pkt, pobj);
-            routes.commandOpenFailed(pobj);
+            routes.commandOpenFailed(pobj, socket);
             break;
         case 8:
             routes.commandCreateFailed(pobj);
