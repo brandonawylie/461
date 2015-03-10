@@ -130,7 +130,7 @@ function relayExtend(obj, socket) {
     var extendSocket = getSocketFromTable(socketTable, extendAgentID);
 
     util.log(TAG + "Recvd relay extend cell");
-    console.log("parsedBody: " + extendIP + extendPort + extendAgentID);
+    // console.log("parsedBody: " + extendIP + ":" + extendPort + ", agendID: " + extendAgentID);
 
     if (routingTable[map_a] == null) {
         // Reached end of circuit

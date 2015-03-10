@@ -169,7 +169,7 @@ function createCircuit(data) {
                     var createdCallback = function() {
                         util.log(TAG + "socket on created was called");
                         socket.Created = true;
-                        socket.write(relay.createExtendCell(circuitNum, 0, currentCircuit[1][0], currentCircuit[1][1], currentCircuit[1][2]), function() {
+                        socket.write(relay.createExtendCell(circuitNum, currentCircuit[1][0], currentCircuit[1][1], currentCircuit[1][2]), function() {
 
                             /*
                                 Once created, the source router will want to relay more extends to the existing connection
