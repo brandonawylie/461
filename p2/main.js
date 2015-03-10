@@ -59,18 +59,12 @@ var tor_server = net.createServer({allowHalfOpen: true}, function(incomingSocket
         incomingSocket.id = 927
         socketBuffer = Buffer.concat([socketBuffer, data]);
         var buf;
-        // TODO: Slicing doesn't seem to be working, talk to Rushahb?
-        if (socketBuffer.length > 512) {
+
+        while (socketBuffer.length >= 512) {
             // More data than one cell
             buf = socketBuffer.slice(0, 512);
             var pkt = buf.toString();
             // util.log(TAG + "Recieved data from host with complete data recv: " + pkt);
-            torutil.unpackCommand(buf, incomingSocket);
-            socketBuffer = socketBuffer.slice(512);
-        } else if (socketBuffer.length < 512) {
-            // Only concatenate
-        } else {
-            buf = socketBuffer.slice(0, 512);
             torutil.unpackCommand(buf, incomingSocket);
             socketBuffer = socketBuffer.slice(512);
         }
@@ -133,15 +127,35 @@ function createCircuit(data) {
 
     // send to cell 1
     // TODO: Figure out how to store state and send these pieces sequentially
-    outgoingSocket = net.connect(currentCircuit[0][1], currentCircuit[0][0], function() {
+    socketTable[[currentCircuit[0][2], 1]] = net.connect(currentCircuit[0][1], currentCircuit[0][0], function() {
         util.log(TAG + "Successfully created connection from " + 
                  agentID + " to " + currentCircuit[0][0] + ":" + currentCircuit[0][1]);
         // send open cell
         console.log("current socket table: " + socketTable);
         util.log(TAG + "--->    Sending open cell with router: " + currentCircuit[0]);
-        var openCell = command.createOpenCell(agentID, currentCircuit[0][2]);
-        outgoingSocket.write(openCell, function() {
-            util.log(TAG + "Open sent Successfully");
+
+        
+        // Assigned arbitrary size
+        var socketBuffer = new Buffer(0);
+        socketTable[[currentCircuit[0][2], 1]].on('data', function(data) {
+            util.log(TAG + "<---    Received cell from tor router "+ socketTable[[currentCircuit[0][2], 1]].remoteAddress + ":" + socketTable[[currentCircuit[0][2], 1]].remotePort);
+            
+            socketBuffer = Buffer.concat([socketBuffer, data]);
+            var buf;
+
+            while (socketBuffer.length >= 512) {
+                // More data than one cell
+                buf = socketBuffer.slice(0, 512);
+                var pkt = buf.toString();
+                // util.log(TAG + "Recieved data from host with complete data recv: " + pkt);
+                torutil.unpackCommand(buf, socketTable[[currentCircuit[0][2], 1]]);
+                socketBuffer = socketBuffer.slice(512);
+            }
+        });
+
+        socketTable[[currentCircuit[0][2], 1]].write(command.createOpenCell(circuitNum, agentID, currentCircuit[0][2]), function() {
+            // send create cell
+
         });
 
         // send to cell 2
