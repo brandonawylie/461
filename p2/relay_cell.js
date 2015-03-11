@@ -3,6 +3,7 @@ var http = require('http');
 var url  = require('url');
 var util = require('util');
 var spawn = require('child_process').spawn;
+var globals = require('./main');
 
 var TAG = "relay_cell.js: ";
 var PORT = 1337;
@@ -141,22 +142,22 @@ function packAndSendData(buf, streamNum, circuitNum) {
     while(buf.length >= 498) {
             // More data than one cell
 
-            data = socketBuffer.slice(0, 498).toString();
+            data = buf.slice(0, 498).toString();
             
             cell = createDataCell(circuitNum, streamNum, data);
             cells.push(cell);
 
-            socketBuffer = socketBuffer.slice(498);
+            socketBuffer = buf.slice(498);
     }
 
     if (buf.length > 0) {
-        data = socketBuffer.toString();
+        data = buf.toString();
         cell = createDataCell(circuitNum, streamNum, data);
         cells.push(cell);
     }
 
     util.log(TAG + "packed a total of " + cells.length + " cells form browser request");
-    var socket = torutil.getSocketByCircuitNumber(circuitNum);
+    var socket = getSocketByCircuitNumber(circuitNum);
     if (socket === null) {
         util.log(TAG + "SOMETHING WENT HORRIBLY WRONG, unable to locate socket from circuit number");
     }
@@ -166,6 +167,21 @@ function packAndSendData(buf, streamNum, circuitNum) {
     }
 
     util.log(TAG + "wrote all " + cells.length + " from source on circuit: " + circuitNum);
+}
+
+function getSocketByCircuitNumber(circuitNum) {
+    var routingTable = globals.routingTable();
+    console.log("LOOKING UP STUFF WITH CIRCUIT NUM: " + circuitNum);
+    console.log(routingTable);
+    for (var key in routingTable) {
+        if (routingTable.hasOwnProperty(key)) {
+            
+            if (circuitNum == key.split(',')[1] && routingTable[key] !== null) {
+                return routingTable[key][0];
+            }
+        }
+    }
+    return null;
 }
 
 module.exports = {

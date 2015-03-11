@@ -171,17 +171,6 @@ function getUniqueStreamNumber(streamTable) {
     return num;
 }
 
-function getSocketByCircuitNumber(circuitNum) {
-    var routingTable = globals.routingTable();
-    for (var key in routingTable) {
-        if (routingTable.hasOwnProperty(key)) {
-            if (circuitNum == key[1]) {
-                return routingTable[key][0];
-            }
-        }
-    }
-    return null;
-}
 
 module.exports = {
     parseRegistrations: parseRegistrations,
@@ -192,6 +181,5 @@ module.exports = {
     getRandomCircuitNumberOdd: getRandomCircuitNumberOdd,
     unpackCommand: unpackCommand,
     unpackRelay: unpackRelay,
-    getUniqueStreamNumber: getUniqueStreamNumber,
-    getSocketByCircuitNumber: getSocketByCircuitNumber
+    getUniqueStreamNumber: getUniqueStreamNumber
 };

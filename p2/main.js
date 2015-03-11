@@ -54,8 +54,8 @@ var startCircuitNum = null;
 var tor_server = net.createServer({allowHalfOpen: true}, function(incomingSocket) {
     util.log(TAG + "Received Incoming Socket from tor router " + incomingSocket.remoteAddress + ":" + incomingSocket.remotePort);
     var circuitNum = torutil.getRandomCircuitNumberEven();
-    if (startCircuitNum === null)
-        startCircuitNum = circuitNum;
+    //if (startCircuitNum === null)
+     //   startCircuitNum = circuitNum;
 
     // Assigned arbitrary size
     var socketBuffer = new Buffer(0);
@@ -89,24 +89,16 @@ var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSo
 
 
     var browserBuffer = new Buffer(0);
+
     incomingSocket.on('data', function(data) {
-        browserBuffer.concat([browserBuffer, data]);
-    });
+        util.log(TAG + " RECIEVED data from browser");
 
-    incomingSocket.on('end', function(data) {
-        
+        browserBuffer = Buffer.concat([browserBuffer, data]);
 
-        // Get end host
-        // Choose stream number
-        // send begin
-
-        // the request line
-        var str = browserBuffer.toString().split('\n')[0];
+        var str = data.toString().split('\n')[0];
 
         // the website!!
         var query = str.split(' ')[1];
-
-        // todo unique
 
         var streamNumber = torutil.getUniqueStreamNumber(streamTable);
 
@@ -115,6 +107,18 @@ var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSo
         util.log(TAG + "Recieved end from browser, host requested: " + query + ", assigned streamNumber=" + streamNumber);
 
         relay.packAndSendData(browserBuffer, streamNumber, startCircuitNum);
+        //relay.packAndSendData(browserBuffer, streamNumber, startCircuitNum);
+    });
+
+    incomingSocket.on('end', function() {
+        util.log(TAG + "recv'd end from browser");
+
+        // Get end host
+        // Choose stream number
+        // send begin
+
+        // the request line
+
     });
 }).listen(BROSWER_PORT);
 
@@ -150,7 +154,7 @@ function createCircuit(data) {
              currentCircuit[0][0] + ", " + currentCircuit[1][0] + ", " + currentCircuit[2][0]);
 
     var circuitNum = torutil.getRandomCircuitNumberOdd();
-
+    startCircuitNum = circuitNum;
     // send to cell 1
     // TODO: Figure out how to store state and send these pieces sequentially
     
