@@ -134,6 +134,40 @@ function parseRelayExtendBody(body) {
     return parsedBody;
 }
 
+function packAndSendData(buf, streamNum, circuitNum) {
+    var data;
+    var cells = [];
+    var cell;
+    while(buf.length >= 498) {
+            // More data than one cell
+
+            data = socketBuffer.slice(0, 498).toString();
+            
+            cell = createDataCell(circuitNum, streamNum, data);
+            cells.push(cell);
+
+            socketBuffer = socketBuffer.slice(498);
+    }
+
+    if (buf.length > 0) {
+        data = socketBuffer.toString();
+        cell = createDataCell(circuitNum, streamNum, data);
+        cells.push(cell);
+    }
+
+    util.log(TAG + "packed a total of " + cells.length + " cells form browser request");
+    var socket = torutil.getSocketByCircuitNumber(circuitNum);
+    if (socket === null) {
+        util.log(TAG + "SOMETHING WENT HORRIBLY WRONG, unable to locate socket from circuit number");
+    }
+    for (var i = 0; i < cells.length; i++) {
+        // TODO find stream
+        socket.write(cells[i]);
+    }
+
+    util.log(TAG + "wrote all " + cells.length + " from source on circuit: " + circuitNum);
+}
+
 module.exports = {
     createBeginCell: createBeginCell,
     createDataCell: createDataCell,
@@ -143,5 +177,6 @@ module.exports = {
     createExtendedCell: createExtendedCell,
     createBeginFailed: createBeginFailed,
     createExtendFailed: createExtendFailed,
-    parseRelayExtendBody: parseRelayExtendBody
+    parseRelayExtendBody: parseRelayExtendBody,
+    packAndSendData: packAndSendData
 };

@@ -138,7 +138,9 @@ function relayExtend(obj, socket) {
                     util.log(TAG + "At relay extend, sent open");
 
                     // Opened received for this new socket connection
-                    extendSocket.on('opened', function() {
+                    
+
+                    var openedListener = function() {
                         util.log(TAG + "At relay extend, opened was received");
                         extendSocket.Opened = true;
 
@@ -148,7 +150,7 @@ function relayExtend(obj, socket) {
                             util.log(TAG + "At relay extend, sent create");
 
                             // Once opened & sent create circuit with the final router, we need to return the relay extended
-                            extendSocket.on('created', function() {
+                            var createdListener = function() {
                                 util.log(TAG + "At relay extend, created was received");
                                 extendSocket.Created = true;
                     
@@ -173,9 +175,17 @@ function relayExtend(obj, socket) {
                                 socket.write(extendedCell, function() {
                                     util.log(TAG + "Relay extended sent back along circuit");
                                 });
-                            });
+
+                                extendSocket.removeListener('created', createdListener);
+                            };
+
+                            extendSocket.on('created', createdListener);
                         });
-                    });
+
+                        extendSocket.removeListener('opened', openedListener);
+                    };
+
+                    extendSocket.on('opened', openedListener);
                 });
             });
         } else {
@@ -192,7 +202,7 @@ function relayExtend(obj, socket) {
                     util.log("incoming circuitNum: " + map_a_value[1]);
 
                 // Once opened & sent create circuit with the final router, we need to return the relay extended
-                extendSocket.on('created', function() {
+                var createdListener = function() {
                     util.log(TAG + "At relay extend, created was received");
                     extendSocket.Created = true;
         
@@ -217,7 +227,9 @@ function relayExtend(obj, socket) {
                     socket.write(extendedCell, function() {
                         util.log(TAG + "Relay extended sent back along circuit");
                     });
-                });
+                    extendSocket.removeListener('created', createdListener);
+                };
+                extendSocket.on('created', createdListener);
             });
         }
      }  else {
@@ -243,14 +255,14 @@ function relayExtended(obj, socket) {
     
     printRoutingTable(routingTable);
 
-    if (map_b_value == null) {
+    if (map_b_value === null) {
         // CASE 1: Reached beginning of circuit again :)
         util.log(TAG + "relay extended has reached beginning of circuit");
         socket.emit('extended');
     } else {
         // CASE 2: Middle of circuit, keep sending extended back
-        util.log("incoming circuitID: " + map_a.circuitNum);
-        util.log("outgoing circuitID: " + map_b.circuitNum);
+        util.log("incoming circuitID: " + map_a_key[1]);
+        util.log("outgoing circuitID: " + map_b_value[1]);
         var outCircuitNum = map_b_value[1];
         var extendedCell = relay.createExtendedCell(outCircuitNum);
         util.log("<----" + TAG + "Sending relay extended cell back...");

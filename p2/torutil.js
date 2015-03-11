@@ -1,5 +1,6 @@
 var routes = require('./routes');
 var util = require('util');
+var globals = require('./main');
 var TAG = "torutil.js ";
 
 function parseRegistrations(reg) {
@@ -151,6 +152,37 @@ function unpackRelay(pkt, obj, socket) {
     }
 }
 
+function getUniqueStreamNumber(streamTable) {
+    var num;
+    var flag = false;
+
+    while (!flag) {
+        flag = true;
+        num = Math.floor((Math.random() * 9999) + 1);
+        for (var key in streamTable) {
+            if (streamTable.hasOwnProperty(key)) {
+                if (key === num) {
+                    flag = false;
+                }
+            }
+        }
+    }
+
+    return num;
+}
+
+function getSocketByCircuitNumber(circuitNum) {
+    var routingTable = globals.routingTable();
+    for (var key in routingTable) {
+        if (routingTable.hasOwnProperty(key)) {
+            if (circuitNum == key[1]) {
+                return routingTable[key][0];
+            }
+        }
+    }
+    return null;
+}
+
 module.exports = {
     parseRegistrations: parseRegistrations,
     isCommandCell: isCommandCell,
@@ -159,5 +191,7 @@ module.exports = {
     getRandomCircuitNumberEven: getRandomCircuitNumberEven,
     getRandomCircuitNumberOdd: getRandomCircuitNumberOdd,
     unpackCommand: unpackCommand,
-    unpackRelay: unpackRelay
+    unpackRelay: unpackRelay,
+    getUniqueStreamNumber: getUniqueStreamNumber,
+    getSocketByCircuitNumber: getSocketByCircuitNumber
 };

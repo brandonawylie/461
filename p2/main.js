@@ -49,15 +49,19 @@ exports.agentID = function() {
     return agentID;
 };
 
+var startCircuitNum = null;
+
 var tor_server = net.createServer({allowHalfOpen: true}, function(incomingSocket) {
     util.log(TAG + "Received Incoming Socket from tor router " + incomingSocket.remoteAddress + ":" + incomingSocket.remotePort);
     var circuitNum = torutil.getRandomCircuitNumberEven();
+    if (startCircuitNum === null)
+        startCircuitNum = circuitNum;
 
     // Assigned arbitrary size
     var socketBuffer = new Buffer(0);
     incomingSocket.on('data', function(data) {
         util.log(TAG + "Received cell from tor router "+ incomingSocket.remoteAddress + ":" + incomingSocket.remotePort);
-        incomingSocket.id = 927
+        incomingSocket.id = 927;
         socketBuffer = Buffer.concat([socketBuffer, data]);
         var buf;
 
@@ -81,15 +85,36 @@ var tor_server = net.createServer({allowHalfOpen: true}, function(incomingSocket
 // Proxy
 var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSocket) {
     util.log(TAG + "Received Incoming Socket from browser " + incomingSocket.remoteAddress + ":" + incomingSocket.remotePort);
-    pkt = '';
+    
+
+
+    var browserBuffer = new Buffer(0);
     incomingSocket.on('data', function(data) {
-        // TODO: Create stream, pack data up in to cells and send it accross stream
-        pkt += data;
+        browserBuffer.concat([browserBuffer, data]);
     });
 
     incomingSocket.on('end', function(data) {
-        util.log(TAG + "Recieved end from host with complete data recv: " + pkt);
-        relay.packAndSendData(pkt);
+        
+
+        // Get end host
+        // Choose stream number
+        // send begin
+
+        // the request line
+        var str = browserBuffer.toString().split('\n')[0];
+
+        // the website!!
+        var query = str.split(' ')[1];
+
+        // todo unique
+
+        var streamNumber = torutil.getUniqueStreamNumber(streamTable);
+
+        streamTable[streamNumber] = incomingSocket;
+
+        util.log(TAG + "Recieved end from browser, host requested: " + query + ", assigned streamNumber=" + streamNumber);
+
+        relay.packAndSendData(browserBuffer, streamNumber, startCircuitNum);
     });
 }).listen(BROSWER_PORT);
 
