@@ -12,6 +12,21 @@
 -Proxy piece from browser
 
 
+Seth:
+-Debug circuit creation
+-Data relay
+    -Proxy
+    -Routes.js
+
+Brandon:
+-Stream creation
+    -Proxy side
+    -Routes.js
+
+Pair:
+-Helper function setting up socket
+-Double check on routing table (This is required for other stuff to work)
+-Clean up logging
 
 PROBLEMS/QUESTIONS?
--->
+-->Events.  In relay extend can we overwrite the original events for on opened and on created?

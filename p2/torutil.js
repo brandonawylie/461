@@ -7,7 +7,7 @@ function parseRegistrations(reg) {
     var lines = reg.split("\n");
     //lines.splice(lines.length , 1);
     for (var i = 0; i < lines.length - 1; i++) {
-        var  router = lines[i].split("\t");
+        var router = lines[i].split("\t");
         retVal.push(router);
     }
     return retVal;
@@ -68,7 +68,7 @@ function unpackCommand(pkt, socket) {
     };
     pobj.CircuitID =   pkt.readUInt16BE(0);
     pobj.CommandType = pkt.readUInt8(2);
-    util.log(TAG + "received packet on circ #: " + pobj.CircuitID + ", of command: " + pobj.CommandType);
+    util.log(TAG + "unpacking command cell from circ #: " + pobj.CircuitID + ", of command: " + pobj.CommandType);
     switch(pobj.CommandType) {
         case 1:
             routes.commandCreate(pobj, socket);
@@ -119,9 +119,8 @@ function unpackRelay(pkt, obj, socket) {
     obj.StreamID = pkt.readUInt16BE(3);
     obj.BodyLength = pkt.readUInt16BE(11);
     obj.Relay.Command = pkt.readUInt8(13);
-    var endBody = Math.max(0, obj.BodyLength - 4);
-    obj.Relay.Body = pkt.toString('utf8', 14, 14 + endBody);
-    util.log(TAG + "recv'd relay with cmd: " + obj.Relay.Command);
+    obj.Relay.Body = pkt.toString('utf8', 14, 14 + obj.BodyLength);
+    util.log(TAG + "unpacking relay, cmd: " + obj.Relay.Command);
     switch(obj.Relay.Command) {
         case 1:
             routes.relayBegin();
@@ -136,7 +135,9 @@ function unpackRelay(pkt, obj, socket) {
             routes.relayConnected();
             break;
         case 6:
-            obj.Relay.AgentID = pkt.readUInt32BE(10 + obj.BodyLength)
+            var endBody = Math.max(0, obj.BodyLength - 4);
+            obj.Relay.Body = pkt.toString('utf8', 14, 14 + endBody);
+            obj.Relay.AgentID = pkt.readUInt32BE(14 + endBody)
             routes.relayExtend(obj, socket);
             break;
         case 7:

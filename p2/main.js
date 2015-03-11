@@ -22,7 +22,7 @@ var router_name = torName + "-" + groupNum + "-" + instanceNum;
 var agentID = Math.floor((Math.random() * 9999) + 1);
 
 // TAG ourselves to log
-var TAG = router_name + ": main.js: ";
+var TAG = agentID + ": main.js: ";
 
 var routerAddress = "";
 
@@ -132,6 +132,7 @@ function createCircuit(data) {
         util.log(TAG + "Successfully created connection from " + 
                  agentID + " to " + currentCircuit[0][0] + ":" + currentCircuit[0][1] + ", " + currentCircuit[0][2]);
         // send open cell
+        console.log();
         util.log(TAG + "--->    Sending open cell with router: " + currentCircuit[0]);
 
         socketTable[[currentCircuit[0][2], 1]] = socket;
@@ -159,14 +160,21 @@ function createCircuit(data) {
 
             // Opened event, send the create cell
             var openedCallback =  function() {
-                util.log(TAG + "socket on opened was called");
+                console.log();
+                util.log(TAG + "socket on opened was called, sending created");
                 socket.Opened = true;
 
                 // Write the create cell, and wait for the created event
                 socket.write(command.createCreateCell(circuitNum), function() {
 
                     var createdCallback = function() {
-                        util.log(TAG + "socket on created was called");
+                        console.log();
+                        util.log(TAG + "socket on created was called, updating routingTable"); 
+                        outgoingEdge = {
+                            "Socket": socket,
+                            "circuitNum": circuitNum
+                        }
+                        util.log(TAG + "Sending extend relay cell");
                         socket.Created = true;
                         socket.write(relay.createExtendCell(circuitNum, currentCircuit[1][0], currentCircuit[1][1], currentCircuit[1][2]), function() {
 

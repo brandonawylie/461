@@ -12,20 +12,21 @@ var PORT = 1337;
 // TODO: Discuss router table format--> Spec says to do socket/circuit no. instead of id/circuit no.
 function commandCreate(obj, socket) {
     util.log(TAG + "Create Cell recv'd");
-    routingTable = globals.routingTable();
-    socketTable = globals.socketTable();
+    var routingTable = globals.routingTable();
+    var socketTable = globals.socketTable();
     var map_a = {
         "Socket": socket,
         "circuitNum": obj.CircuitID
     };
-    //var map_b = ;
-
     if (!routingTable.hasOwnProperty(map_a)) {
         //util.log(TAG + "Incoming Socket has no routing match, archiving under " + circuitNum);
+        util.log(TAG + "Updating routing table to route to null");
         routingTable[map_a] = null;
-        
+        routingTable[null] = map_a;
     }
 
+    console.log();
+    util.log(TAG + "Sending created cell");
     socket.write(command.createCreatedCell(obj.AgentIDBegin, obj.AgentIDEnd), function() {
         util.log(TAG + " sending created cell successful");
     });
@@ -33,8 +34,8 @@ function commandCreate(obj, socket) {
 
 function commandCreated(obj, socket) {
     util.log(TAG + "created Cell recv'd");
-    routingTable = globals.routingTable();
-    socketTable = globals.socketTable();
+    var routingTable = globals.routingTable();
+    var socketTable = globals.socketTable();
     var map_a = {
         // TODO: Update routing table for incoming
     };
@@ -45,14 +46,12 @@ function commandCreated(obj, socket) {
 
     if (!routingTable.hasOwnProperty(map_a) || !routingTable.hasOwnProperty(map_b)) {
         //util.log(TAG + "Incoming Socket has no routing match, archiving under " + circuitNum);
+        util.log("Updating two way mapping of routing table");
         routingTable[map_a] = map_b;
         routingTable[map_b] = map_a;
-        
     }
 
-    //console.log(obj.AgentIDEnd);
-    //console.log(socketTable);
-
+    util.log(TAG + "Setting created event")
     socket.emit('created');
 
 }
@@ -69,26 +68,25 @@ function commandOpen(obj, socket) {
     util.log(TAG + "Open Cell recv'd");
     socketTable = globals.socketTable();
     agentID = globals.agentID();
-    console.log("now socket table" + socketTable);
     if (!socketTable.hasOwnProperty([obj.AgentIDBegin, 0])) {
-        util.log(TAG + "Open Cell recv'd, adding socket to table w/ agentID: " + obj.AgentIDBegin);
+        util.log(TAG + "Adding socket to table w/ agentID: " + obj.AgentIDBegin);
         socketTable[[obj.AgentIDBegin, 0]] = socket;
     } else {
         util.log(TAG + "Open Cell recv'd, with existing socket already open: ERROR");
     }
 
-    util.log(TAG + " open was a success, sending opened back with agent id: " + obj.AgentIDBegin);
+    console.log();
+    util.log(TAG + "Open was a success, sending opened back to agent id: " + obj.AgentIDBegin);
 
-    //console.log(socketTable);
     socketTable[[obj.AgentIDBegin, 0]].write(command.createOpenedCell(obj.AgentIDBegin, obj.AgentIDEnd), function() {
-        util.log(TAG + " sending opened successful");
+        util.log(TAG + "Sending opened successful");
     });
 }
 
 function commandOpened(obj, socket) {
     socketTable = globals.socketTable();
     //socketTable[[obj.AgentIDBegin, 0]] = socket;
-    util.log(TAG + " Opened received, sending a create cell");
+    util.log(TAG + "Opened received, setting opened event");
     var circuitNum = Math.floor((Math.random() * 9999) + 1);
 
     socket.emit('opened');
@@ -116,8 +114,7 @@ function relayConnected() {
 
 function relayExtend(obj, socket) {
     var routingTable = globals.routingTable();
-    socketTable = globals.socketTable();
-    console.log(socketTable);
+    var socketTable = globals.socketTable();
     var agentID = globals.agentID();
     var map_a = {
         "Socket": socket,
@@ -130,24 +127,22 @@ function relayExtend(obj, socket) {
     var extendIP = parsedBody.ip;
     var extendPort = parseInt(parsedBody.portNum);
     var extendSocket = getSocketFromTable(socketTable, extendAgentID);
-    console.log("agent id: " + extendAgentID);
-    console.log("ip: " + extendIP);
-    console.log("port: " + extendPort);
     util.log(TAG + "Recvd relay extend cell");
-    // console.log("parsedBody: " + extendIP + ":" + extendPort + ", agendID: " + extendAgentID);
 
     if (routingTable[map_a] == null) {
         // Reached end of circuit
         util.log(TAG + "At relay extend, reached end of circuit");
-        if (extendSocket == null) {
+        if (extendSocket === null) {
             // CASE 1: No socket connection, send open & then create
-            util.log("At relay extend, no socket connection");
+            util.log(TAG + "At relay extend, no socket connection");
+            util.log(TAG + "Creating socket...");
             extendSocket = net.connect(extendPort, extendIP, function() {
 
                 util.log(TAG + "Extend socket created successfully, adding to socket table");
                 // Add socket to socket table
                 socketTable[[extendAgentID, 1]] = extendSocket;
 
+                console.log();
                 util.log(TAG + "At relay extend, Sending open cell")
                 extendSocket.write(command.createOpenCell(agentID, extendAgentID), function() {
                     util.log(TAG + "At relay extend, sent open");
@@ -158,6 +153,7 @@ function relayExtend(obj, socket) {
                         extendSocket.Opened = true;
 
                         // Write the create cell
+                        util.log(TAG + "At relay extend, sending create cell...");
                         extendSocket.write(command.createCreateCell(obj.circuitNum), function() {
                             util.log(TAG + "At relay extend, sent create");
 
@@ -168,6 +164,7 @@ function relayExtend(obj, socket) {
                                 var extendedCell = createExtendedCell(obj.CircuitID);
 
                                 // Send relay extended back the opposite way on the circuit
+                                util.log(TAG + "At relay extend, sending extended cell back...");
                                 socket.write(extendedCell, function() {
                                     util.log(TAG + "<---     Relay extended send back along circuit");
                                 });
@@ -177,9 +174,12 @@ function relayExtend(obj, socket) {
                 });
             });
         } else {
-            console.log("there is socket connection");
             // CASE 2: We have a socket connection, send create
-            extendSocket.write(command.createCreateCell(obj.circuitNum), function() {
+            util.log("At relay extend, socket connection exists");
+            console.log();
+            util.log("Sending create cell to extended socket");
+            var createCell = command.createCreateCell(obj.circuitNum);
+            extendSocket.write(createCell, function() {
                 util.log(TAG + "At relay extend, sent create");
 
                 // Once opened & sent create circuit with the final router, we need to return the relay extended
@@ -189,6 +189,7 @@ function relayExtend(obj, socket) {
                     var extendedCell = createExtendedCell(obj.CircuitID);
 
                     // Send relay extended back the opposite way on the circuit
+                    util.log(TAG + "At relay extend, sending extended cell back...");
                     socket.write(extendedCell, function() {
                         util.log(TAG + "<---     Relay extended send back along circuit");
                     });
@@ -247,7 +248,6 @@ function relayExtendFailed() {
 }
 
 function getSocketFromTable(socketTable, agentID) {
-    console.log("Socket table w/ agent id: " + socketTable[[agentID, 1]] + socketTable[[agentID, 0]]);
     if(socketTable.hasOwnProperty([agentID, 1])) {
         // Contains socket that was created outgoing
         return socketTable[[agentID, 1]];
@@ -256,6 +256,7 @@ function getSocketFromTable(socketTable, agentID) {
         return socketTable[[agentID, 0]];
     } else {
         // No current socket with this router
+        console.log("No socket");
         return null;
     }
 }
