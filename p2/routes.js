@@ -24,7 +24,8 @@ function commandCreate(obj, socket) {
 
     console.log();
     util.log("<----" + TAG + "Sending created cell");
-    socket.write(command.createCreatedCell(obj.AgentIDBegin, obj.AgentIDEnd), function() {
+    util.log("Sending to socket:" + socket._handle.fd);
+    socket.write(command.createCreatedCell(obj.CircuitID), function() {
         util.log(TAG + " sending created cell successful");
     });
 }
@@ -33,7 +34,7 @@ function commandCreated(obj, socket) {
     util.log(TAG + "created Cell recv'd");
     var routingTable = globals.routingTable();
     var socketTable = globals.socketTable();
-
+    console.log("Recvd circuitID: " + obj.CircuitID);
     util.log(TAG + "Setting created event")
     socket.emit('created');
 
@@ -112,7 +113,7 @@ function relayExtend(obj, socket) {
     var map_a_value = [socket, obj.CircuitID];
     var map_a_key = [socket._handle.fd, obj.CircuitID];
     
-    util.log(TAG + "Recvd relay extend cell");
+    util.log(TAG + "Recvd relay extend cell from circuitID: " + obj.CircuitID);
 
     if (routingTable[map_a_key] === null) {
         // Reached end of circuit
@@ -186,6 +187,9 @@ function relayExtend(obj, socket) {
             var createCell = command.createCreateCell(extendCircuitNum);
             extendSocket.write(createCell, function() {
                 util.log(TAG + "At relay extend, sent create");
+
+                    util.log("extend circuitNum: " + extendCircuitNum);
+                    util.log("incoming circuitNum: " + map_a_value[1]);
 
                 // Once opened & sent create circuit with the final router, we need to return the relay extended
                 extendSocket.on('created', function() {
