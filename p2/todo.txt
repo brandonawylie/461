@@ -1,22 +1,9 @@
--Circuit creation
-    -Routes.js methods for circuit creationg
-        -commandCreate
-        -commandCreated
-        -commandOpen
-        -commandOpened
-        -relayExtend
-        -relayExtended
-    -Create data structure to store state of router
-        -Possibility: circ_id -> callbackFunction
-            ex: opened comes back, then create, created comes back, then relay extend
--Proxy piece from browser
-
-
 Seth:
 -Debug circuit creation
 -Data relay
     -Proxy
     -Routes.js
+-Clean up code--> relayExtend
 
 Brandon:
 -Stream creation
@@ -24,9 +11,19 @@ Brandon:
     -Routes.js
 
 Pair:
--Helper function setting up socket
+-Helper functions for socket functionalitys
 -Double check on routing table (This is required for other stuff to work)
 -Clean up logging
 
+
+
+
+
 PROBLEMS/QUESTIONS?
 -->Events.  In relay extend can we overwrite the original events for on opened and on created?
+
+
+Also:
+-Circuit dying/recreation
+-Tunnel from browser
+-HTTPS?

@@ -34,6 +34,8 @@ require('dns').lookup(require('os').hostname(), function (err, add, fam) {
 routingTable  = {};
 socketTable   = {};
 streamTable   = {};
+// For debugging routing table (easier to print)
+fakeRoutingTable = {};
 module.exports = {};
 exports.routingTable = function() {
         return routingTable;
@@ -47,6 +49,9 @@ exports.streamTable = function() {
 exports.agentID = function() {
     return agentID;
 };
+exports.fakeRoutingTable = function() {
+    return fakeRoutingTable;
+}
 
 var tor_server = net.createServer({allowHalfOpen: true}, function(incomingSocket) {
     util.log(TAG + "Received Incoming Socket from tor router " + incomingSocket.remoteAddress + ":" + incomingSocket.remotePort);
@@ -55,7 +60,7 @@ var tor_server = net.createServer({allowHalfOpen: true}, function(incomingSocket
     // Assigned arbitrary size
     var socketBuffer = new Buffer(0);
     incomingSocket.on('data', function(data) {
-        util.log(TAG + "<---    Received cell from tor router "+ incomingSocket.remoteAddress + ":" + incomingSocket.remotePort);
+        util.log(TAG + "Received cell from tor router "+ incomingSocket.remoteAddress + ":" + incomingSocket.remotePort);
         incomingSocket.id = 927
         socketBuffer = Buffer.concat([socketBuffer, data]);
         var buf;
@@ -123,7 +128,8 @@ function createCircuit(data) {
     util.log(TAG + "Chose 4 random routers with ip addresses: " + 
              currentCircuit[0][0] + ", " + currentCircuit[1][0] + ", " + currentCircuit[2][0]);
 
-    var circuitNum = Math.floor((Math.random() * 9999) + 1);
+    var circuitNum = torutil.getRandomCircuitNumberOdd()
+    Math.floor((Math.random() * 9999) + 1);
 
     // send to cell 1
     // TODO: Figure out how to store state and send these pieces sequentially
@@ -133,13 +139,13 @@ function createCircuit(data) {
                  agentID + " to " + currentCircuit[0][0] + ":" + currentCircuit[0][1] + ", " + currentCircuit[0][2]);
         // send open cell
         console.log();
-        util.log(TAG + "--->    Sending open cell with router: " + currentCircuit[0]);
+        util.log("---->" + TAG + "Sending open cell with router: " + currentCircuit[0]);
 
         socketTable[[currentCircuit[0][2], 1]] = socket;
         // Assigned arbitrary size
         var socketBuffer = new Buffer(0);
         socket.on('data', function(data) {
-            util.log(TAG + "<---    Received cell from tor router "+ socketTable[[currentCircuit[0][2], 1]].remoteAddress + ":" + socketTable[[currentCircuit[0][2], 1]].remotePort);
+            util.log(TAG + "Received cell from tor router "+ socketTable[[currentCircuit[0][2], 1]].remoteAddress + ":" + socketTable[[currentCircuit[0][2], 1]].remotePort);
             
             socketBuffer = Buffer.concat([socketBuffer, data]);
             var buf;
@@ -161,20 +167,31 @@ function createCircuit(data) {
             // Opened event, send the create cell
             var openedCallback =  function() {
                 console.log();
-                util.log(TAG + "socket on opened was called, sending created");
+                util.log("---->" + TAG + "socket on opened was called, sending create cell");
                 socket.Opened = true;
 
                 // Write the create cell, and wait for the created event
                 socket.write(command.createCreateCell(circuitNum), function() {
 
                     var createdCallback = function() {
-                        console.log();
                         util.log(TAG + "socket on created was called, updating routingTable"); 
                         outgoingEdge = {
                             "Socket": socket,
                             "circuitNum": circuitNum
                         }
-                        util.log(TAG + "Sending extend relay cell");
+                        routingTable[outgoingEdge] = null;
+                        routingTable[null] = outgoingEdge;
+                        // Update fake table for debugging
+                        fakeOutgoingEdge = {
+                            "Socket": "out",
+                            "circuitNum": circuitNum
+                        }
+                        fakeRoutingTable[fakeOutgoingEdge] = null;
+                        fakeRoutingTable[null] = fakeOutgoingEdge;
+                        console.log("Updated table:");
+                        console.log(fakeRoutingTable);
+                        console.log();
+                        util.log("---->" + TAG + "Sending extend relay cell");
                         socket.Created = true;
                         socket.write(relay.createExtendCell(circuitNum, currentCircuit[1][0], currentCircuit[1][1], currentCircuit[1][2]), function() {
 

@@ -22,14 +22,14 @@ function isRelayCell(pkt) {
 }
 
 function getRandomCircuitNumberEven() {
-    var val = Math.floor((Math.random() * 99999) + 1);
+    var val = Math.floor((Math.random() * 65535));
     if (val % 2 !== 0) {
         val += 1;
     }
     return val;
 }
 function getRandomCircuitNumberOdd() {
-    var val = Math.floor((Math.random() * 99999) + 1);
+    var val = Math.floor((Math.random() * 65535));
     if (val % 2 === 0) {
         val += 1;
     }
