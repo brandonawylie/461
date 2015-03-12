@@ -110,16 +110,22 @@ var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSo
         var streamKey = [startSocket._handle.fd, startCircuitNum, streamNumber];
         util.log(TAG + "Mapping " + streamKey + " to browser socket");
         streamTable[streamKey] = incomingSocket;
-        util.log(TAG + "Recieved end from browser, host requested: " + query + ", assigned streamNumber=" + streamNumber);
-        
-        var port = 80;
-        if (query.indexOf('https:\\\\') >= 0) {
-            port = 443;
-        } 
+        //util.log(TAG + "Recieved data from browser, host requested: " + query + ", assigned streamNumber=" + streamNumber);
+        var req_url = url.parse(query); 
+        // Specify port if null
+        var is_https = (query.indexOf("https") > -1);
+        if (req_url.port === null) {
+            if (is_https) {
+                req_url.port = 443;
+            } else {
+                req_url.port = 80;
+            }
+        }
 
+        util.log(TAG + "Recieved data from browser, host requested: " + req_url.hostname + ":" + req_url.port + ", assigned streamNumber=" + streamNumber);
         console.log();
         util.log("----> " + TAG + "Sending begin cell...");
-        startSocket.write(relay.createBeginCell(startCircuitNum, streamNumber, query, port), function() {
+        startSocket.write(relay.createBeginCell(startCircuitNum, streamNumber, req_url.hostname, req_url.port), function() {
             var connectedListener = function() {
                 util.log(TAG + "Connected complete for stream");
                 console.log();
