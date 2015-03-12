@@ -169,6 +169,8 @@ function packAndSendData(buf, streamNum, circuitNum, socket) {
 
     for (var i = 0; i < cells.length; i++) {
         // TODO find stream
+        console.log();
+        util.log("---->" + TAG + "Packed and sending on circuit: " + circuitNum);
         socket.write(cells[i]);
     }
 
