@@ -127,7 +127,8 @@ function unpackRelay(pkt, obj, socket) {
             routes.relayBegin();
             break;
         case 2:
-            routes.relayData();
+            obj.Relay.Data = pkt.slice(14, 14 + obj.BodyLength);
+            routes.relayData(obj, socket);
             break;
         case 3:
             routes.relayEnd(obj, socket);

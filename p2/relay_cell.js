@@ -135,6 +135,10 @@ function parseRelayExtendBody(body) {
     return parsedBody;
 }
 
+function parseRelayDataBody(body) {
+
+}
+
 function packAndSendData(buf, streamNum, circuitNum) {
     var data;
     var cells = [];
@@ -194,5 +198,6 @@ module.exports = {
     createBeginFailed: createBeginFailed,
     createExtendFailed: createExtendFailed,
     parseRelayExtendBody: parseRelayExtendBody,
-    packAndSendData: packAndSendData
+    packAndSendData: packAndSendData,
+    parseRelayDataBody: parseRelayDataBody
 };

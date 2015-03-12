@@ -83,8 +83,35 @@ function relayBegin() {
     //TODO implement this
 }
 
-function relayData() {
-    //TODO implement this
+function relayData(obj, socket) {
+    var routingTable = globals.routingTable();
+    var socketTable = globals.socketTable();
+    var map_a_key = [socket._handle.fd, obj.CircuitID]; 
+    var streamTable = globals.streamTable();
+    var map_b_value = routingTable[map_a_key];
+    var streamKey = obj.StreamID;
+    var data = obj.Relay.Data;
+    var agentID = globals.agentID();
+    util.log(TAG + "Recvd relay data cell");
+
+    if (map_b_value === null) {
+        // We have reached the end of the circuit
+        util.log(TAG + "End of the server has been reached");
+        var endSocket = streamTable[[streamKey]];
+        util.log("<----" + TAG + "Writing data to... (0/1 = browser/server):" + streamKey[1]);
+        endSocket.write(data, function() {
+            util.log(TAG + "Data written");
+        });
+    } else {
+        // Send the data through the circuit
+        util.log(TAG + "Sending data through router" + agentID);
+        var outCircuitNum = map_b_value[1];
+        var dataCell = relay.createDataCell(outCircuitNum, streamKey, data);
+        util.log("---->" + TAG + "Sending relay data cell through router" + agentID);
+        map_b_value[0].write(dataCell, function() {
+            util.log(TAG + "Relay data cell sent successfully");
+        });
+    }
 }
 
 function relayEnd() {
