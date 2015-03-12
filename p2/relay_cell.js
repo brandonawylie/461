@@ -42,17 +42,16 @@ function createDataCell(circ_id, stream_id, data) {
     // Used for sending data through a stream on the circuit
     var buf = createBasicRelay(circ_id, stream_id);
     var body_length = data.length;
-    var endBuf = new Buffer(SIZE);
     buf.writeUInt16BE(body_length, 11);
     buf.writeUInt8(DATA, 13);
     buf = buf.slice(0, 14);
     console.log("Buffer is: " + buf.toString());
     console.log("Data is: " + data.toString());
     // Add data to buffer
-    endBuf = Buffer.concat([buf, data]);
+    buf = Buffer.concat([buf, data]);
     var remainingSize = SIZE - buf.length;
     var zeroBuf = getZeroBuffer(remainingSize);
-    return Buffer.concat([endBuf, zeroBuf]);
+    return Buffer.concat([buf, zeroBuf]);
 }
 
 function createEndCell(circ_id, stream_id) {
@@ -134,7 +133,7 @@ function fillZeros(buffer, start) {
 
 function getZeroBuffer(size) {
     var buf = new Buffer(size);
-    for (i = start; i < size; i++) {
+    for (i = 0; i < size; i++) {
         buf.writeUInt8(0, i);
     }
     return buf;
@@ -173,7 +172,7 @@ function packAndSendData(buf, streamNum, circuitNum, socket) {
     }
 
     if (buf.length > 0) {
-        data = buf.toString();
+        data = buf;
         cell = createDataCell(circuitNum, streamNum, data);
         cells.push(cell);
     }

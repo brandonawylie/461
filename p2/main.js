@@ -15,7 +15,7 @@ var TOR_PORT = 1338;
 var torRegistrations = '';
 
 // register ourself
-var torName = "Tor61Router";
+var torName = "Tor61Router-0023-0046";
 var groupNum = 5316;
 var instanceNum = Math.floor((Math.random() * 9999) + 1);
 var router_name = torName + "-" + groupNum + "-" + instanceNum;
@@ -315,7 +315,7 @@ function registerRouter(port) {
 function getTorRegistrations(callback) {
     util.log(TAG + "fetching TOR registrations: in progress");
     var fetchClient = spawn('python', ['./fetch.py',
-                                  'Tor61Router-8008',
+                                  'Tor61Router-0001-0001',
                  ]
     );
     var allData = '';
