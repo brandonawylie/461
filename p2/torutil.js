@@ -96,7 +96,7 @@ function unpackCommand(pkt, socket) {
             routes.commandOpenFailed(pobj, socket);
             break;
         case 8:
-            routes.commandCreateFailed(pobj);
+            routes.commandCreateFailed(pobj, socket);
             break;
     }
 
@@ -124,9 +124,12 @@ function unpackRelay(pkt, obj, socket) {
     util.log(TAG + "unpacking relay, cmd: " + obj.Relay.Command);
     switch(obj.Relay.Command) {
         case 1:
-            var port = obj.Relay.Body.split(':')[1];
-            var host = obj.Relay.Body.split(':')[0];
-            routes.relayBegin(pobj, socket, host, port);
+            console.log(obj.Relay.Body);
+            var host = obj.Relay.Body.substring(0, obj.Relay.Body.lastIndexOf(':'));
+            var port = obj.Relay.Body.substring(obj.Relay.Body.lastIndexOf(':') + 1, obj.Relay.Body.length);
+            //var port = obj.Relay.Body.split(':')[1];
+            //var host = obj.Relay.Body.split(':')[0];
+            routes.relayBegin(obj, socket, host, port);
             break;
         case 2:
             obj.Relay.Data = pkt.slice(14, 14 + obj.BodyLength);
@@ -136,7 +139,7 @@ function unpackRelay(pkt, obj, socket) {
             routes.relayEnd(obj, socket);
             break;
         case 4:
-            routes.relayConnected();
+            routes.relayConnected(obj, socket);
             break;
         case 6:
             obj.Relay.AgentID = pkt.readUInt32BE(10 + obj.BodyLength);
@@ -146,10 +149,10 @@ function unpackRelay(pkt, obj, socket) {
             routes.relayExtended(obj, socket);
             break;
         case 0x0b:
-            routes.relayBeginFailed();
+            routes.relayBeginFailed(obj, socket);
             break;
         case 0x0c:
-            routes.relayExtendFailed();
+            routes.relayExtendFailed(obj, socket);
             break;
 
     }

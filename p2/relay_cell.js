@@ -139,10 +139,15 @@ function parseRelayDataBody(body) {
 
 }
 
-function packAndSendData(buf, streamNum, circuitNum) {
+function packAndSendData(buf, streamNum, circuitNum, socket) {
+    if (socket === null) {
+        util.log(TAG + "SOMETHING WENT HORRIBLY WRONG, unable to locate socket for packing data");
+        return;
+    }
     var data;
     var cells = [];
     var cell;
+    var routingTable = globals.routingTable();
     while(buf.length >= 498) {
             // More data than one cell
 
@@ -151,7 +156,7 @@ function packAndSendData(buf, streamNum, circuitNum) {
             cell = createDataCell(circuitNum, streamNum, data);
             cells.push(cell);
 
-            socketBuffer = buf.slice(498);
+            buf = buf.slice(498);
     }
 
     if (buf.length > 0) {
@@ -160,11 +165,8 @@ function packAndSendData(buf, streamNum, circuitNum) {
         cells.push(cell);
     }
 
-    util.log(TAG + "packed a total of " + cells.length + " cells form browser request");
-    var socket = getSocketByCircuitNumber(circuitNum);
-    if (socket === null) {
-        util.log(TAG + "SOMETHING WENT HORRIBLY WRONG, unable to locate socket from circuit number");
-    }
+    util.log(TAG + "packed a total of " + cells.length + " cells from request");
+
     for (var i = 0; i < cells.length; i++) {
         // TODO find stream
         socket.write(cells[i]);
@@ -176,7 +178,7 @@ function packAndSendData(buf, streamNum, circuitNum) {
 function getSocketByCircuitNumber(circuitNum) {
     var routingTable = globals.routingTable();
     console.log("LOOKING UP STUFF WITH CIRCUIT NUM: " + circuitNum);
-    console.log(routingTable);
+    //console.log(routingTable);
     for (var key in routingTable) {
         if (routingTable.hasOwnProperty(key)) {
             
@@ -199,5 +201,6 @@ module.exports = {
     createExtendFailed: createExtendFailed,
     parseRelayExtendBody: parseRelayExtendBody,
     packAndSendData: packAndSendData,
-    parseRelayDataBody: parseRelayDataBody
+    parseRelayDataBody: parseRelayDataBody,
+    getSocketByCircuitNumber: getSocketByCircuitNumber
 };

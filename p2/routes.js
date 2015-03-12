@@ -2,6 +2,7 @@ var net = require('net');
 var http = require('http');
 var url  = require('url');
 var util = require('util');
+var url  = require('url');
 var command = require('./command_cell');
 var relay = require('./relay_cell');
 var globals = require('./main');
@@ -82,30 +83,36 @@ function commandOpenFailed(obj) {
 function relayBegin(obj, socket, host, port) {
     var routingTable = globals.routingTable();
     var key = [socket._handle.fd, obj.CircuitID];
-    if (routingTable[key] === null) {
-        //TODO brandon
+    if (routingTable[key] == null) {
+        var req_url = url.parse(host);
         util.log(TAG + " begin arrived at end, adding a connection to " + host + ":" + port + ", with stream id of " + obj.StreamID);
         var streamTable = globals.streamTable();
-        var streamKey = [obj.StreamID, 1];
-        streamTable[streamKey] = net.createConnection(port, host, function() {
-            socket.on('data', function(data) {
-                util.log(TAG + " RECIEVED data from server");
-
+        var streamKey = [socket._handle.fd, obj.CircuitID, obj.StreamID];
+        util.log(TAG + "Mapping " + streamKey + " to server socket");
+        streamTable[streamKey] = net.createConnection(parseInt(port), req_url.hostname, function() {
+            
+            util.log(TAG + "successful setup of begin socket to server");
+            streamTable[streamKey].on('data', function(data) {
+                console.log();
+                util.log(TAG + " RECEIVED data from server");
                 var sock = socket;
-                
-                relay.packAndSendData(data, [obj.StreamID[0], 0], obj.CircuitID);
+                relay.packAndSendData(data, streamKey[2], obj.CircuitID, socket);
             });
 
+            console.log();
+            util.log("<---- " + TAG + "Sending relay connected...");
             socket.write(relay.createConnectedCell(obj.CircuitID, obj.StreamID), function() {
-                util.log(TAG + "<----- Sent relay connected back with circuitID=" + obj.CircuitID + ", and streamID=" + obj.StreamID);
+                util.log(TAG + "Sent relay connected back with circuitID=" + obj.CircuitID + ", and streamID=" + obj.StreamID);
             });
 
         });
     } else {
+        var nextRoute = routingTable[key];
         // we are in the middle, just route it along
+        console.log();
         util.log(TAG + " routing begin through middle routers, forwarding");
-        var sock = routingTable[key][0];
-        var circuitID = routingTable[key][1];
+        var sock = nextRoute[0];
+        var circuitID = nextRoute[1];
         sock.write(relay.createBeginCell(circuitID, obj.StreamID, host, port));
     }
 }
@@ -116,16 +123,19 @@ function relayData(obj, socket) {
     var map_a_key = [socket._handle.fd, obj.CircuitID]; 
     var streamTable = globals.streamTable();
     var map_b_value = routingTable[map_a_key];
-    var streamKey = obj.StreamID;
+    var streamKey = [socket._handle.fd, obj.CircuitID, obj.StreamID];
     var data = obj.Relay.Data;
     var agentID = globals.agentID();
     util.log(TAG + "Recvd relay data cell");
 
-    if (map_b_value === null) {
+    if (map_b_value == null) {
         // We have reached the end of the circuit
-        util.log(TAG + "End of the server has been reached");
-        var endSocket = streamTable[[streamKey]];
-        util.log("<----" + TAG + "Writing data to... (0/1 = browser/server):" + streamKey[1]);
+        util.log(TAG + "End of the circuit has been reached");
+        util.log(TAG + "Stream table key: " + streamKey);
+        //printStreamTable(streamTable);
+        var endSocket = streamTable[streamKey];
+        console.log();
+        util.log(TAG + "Writing data to... :" + endSocket._handle.fd);
         endSocket.write(data, function() {
             util.log(TAG + "Data written");
         });
@@ -133,7 +143,8 @@ function relayData(obj, socket) {
         // Send the data through the circuit
         util.log(TAG + "Sending data through router" + agentID);
         var outCircuitNum = map_b_value[1];
-        var dataCell = relay.createDataCell(outCircuitNum, streamKey, data);
+        var dataCell = relay.createDataCell(outCircuitNum, obj.StreamID, data);
+        console.log();
         util.log("---->" + TAG + "Sending relay data cell through router" + agentID);
         map_b_value[0].write(dataCell, function() {
             util.log(TAG + "Relay data cell sent successfully");
@@ -148,15 +159,13 @@ function relayEnd() {
 function relayConnected(obj, socket) {
     var routingTable = globals.routingTable();
     var key = [socket._handle.fd, obj.CircuitID];
-    if (routingTable[key] === null) {
-        //TODO brandon
+    if (routingTable[key] == null) {
         util.log(TAG + " connected arrived at source");
-        var streamTable = globals.streamTable();
-        var streamKey = [obj.StreamID, 0];
         socket.emit('connected');
     } else {
         // we are in the middle, just route it along
-        util.log(TAG + " routing connected through middle routers, forwarding");
+        console.log();
+        util.log("<----" + TAG + " routing connected through middle routers, forwarding...");
         var sock = routingTable[key][0];
         var circuitID = routingTable[key][1];
         sock.write(relay.createConnectedCell(circuitID, obj.StreamID));
@@ -304,8 +313,6 @@ function relayExtend(obj, socket) {
      }  else {
         // MIDDLE ROUTER CASE: Still in circuit, forward the relay extend
         var map_b_value = routingTable[map_a_key];
-        console.log("map_b: ");
-        console.log(map_b_value);
         var extendCell = relay.createExtendCell(map_b_value[1], extendIP, extendPort, extendAgentID);
         console.log();
         util.log("---->" + TAG + "Middle router, forwarding relay extend cell...");
@@ -395,6 +402,23 @@ function printRoutingTable(routingTable) {
         }
         // Prints them both as they are as keys for easier debugging
         console.log(key + " : " + map_b_key);
+    }
+    console.log();
+}
+
+function printStreamTable(streamTable) {
+    console.log();
+    console.log("printing stream table...");
+    for (var key in streamTable) {
+
+        var value = streamTable[key];
+        var fd;
+        if (value == null) {
+            fd = null;
+        } else {
+            fd = value._handle.fd;
+        }
+        console.log(key + " : " + fd);
     }
     console.log();
 }

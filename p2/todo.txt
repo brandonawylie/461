@@ -1,5 +1,4 @@
 Seth:
--Debug circuit creation
 -Data relay
     -Proxy
     -Routes.js
@@ -24,6 +23,11 @@ PROBLEMS/QUESTIONS?
 
 
 Also:
--Circuit dying/recreation
+-Check to see it works with other router (non self loops)
+-Failure cases & timeouts
 -Tunnel from browser
 -HTTPS?
+
+
+Robust shit:
+-It can setup two circuits at the same time on the same socket (fuck this?)

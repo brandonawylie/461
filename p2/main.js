@@ -30,6 +30,10 @@ require('dns').lookup(require('os').hostname(), function (err, add, fam) {
   routerAddress = add;
 });
 
+// Initial circuit socket
+var startSocket = null;
+var startCircuitNum = null;
+
 // (circuit no, agent no) => (circuit no b, agent no b)
 routingTable  = {};
 socketTable   = {};
@@ -49,13 +53,9 @@ exports.agentID = function() {
     return agentID;
 };
 
-var startCircuitNum = null;
-
 var tor_server = net.createServer({allowHalfOpen: true}, function(incomingSocket) {
     util.log(TAG + "Received Incoming Socket from tor router " + incomingSocket.remoteAddress + ":" + incomingSocket.remotePort);
     var circuitNum = torutil.getRandomCircuitNumberEven();
-    //if (startCircuitNum === null)
-     //   startCircuitNum = circuitNum;
 
     // Assigned arbitrary size
     var socketBuffer = new Buffer(0);
@@ -86,14 +86,10 @@ var tor_server = net.createServer({allowHalfOpen: true}, function(incomingSocket
 var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSocket) {
     util.log(TAG + "Received Incoming Socket from browser " + incomingSocket.remoteAddress + ":" + incomingSocket.remotePort);
     
-
-
     var browserBuffer = new Buffer(0);
 
     incomingSocket.on('data', function(data) {
 
-        //TODO send begin
-        //TODO wait for connected
         util.log(TAG + " RECIEVED data from browser");
 
         browserBuffer = Buffer.concat([browserBuffer, data]);
@@ -104,27 +100,35 @@ var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSo
         var query = str.split(' ')[1];
 
         var streamNumber = torutil.getUniqueStreamNumber(streamTable);
-        // 0 for a socket to the browser, 1 for a socket to the server
-        var streamKey = [streamNumber, 0];
+
+        console.log();
+        console.log("Browser socket: " + incomingSocket._handle.fd);
+        console.log("Start socket: " + startSocket._handle.fd);
+        console.log();
+
+        // The key to map to the browser's socket
+        var streamKey = [startSocket._handle.fd, startCircuitNum, streamNumber];
+        util.log(TAG + "Mapping " + streamKey + " to browser socket");
         streamTable[streamKey] = incomingSocket;
-
         util.log(TAG + "Recieved end from browser, host requested: " + query + ", assigned streamNumber=" + streamNumber);
-
-        var sock = relay.getSocketByCircuitNumber(startCircuitNum);
-
+        
         var port = 80;
-
         if (query.indexOf('https:\\\\') >= 0) {
             port = 443;
         } 
 
-        sock.write(relay.createBeginCell(startCircuitNum, streamNumber, query, port), function() {
+        console.log();
+        util.log("----> " + TAG + "Sending begin cell...");
+        startSocket.write(relay.createBeginCell(startCircuitNum, streamNumber, query, port), function() {
             var connectedListener = function() {
-                relay.packAndSendData(data, streamNumber, startCircuitNum);
-                sock.removeListener('connected', connectedListener);
+                util.log(TAG + "Connected complete for stream");
+                console.log();
+                util.log("----> " + TAG + "Sending data...");
+                relay.packAndSendData(data, streamNumber, startCircuitNum, startSocket);
+                startSocket.removeListener('connected', connectedListener);
             };
 
-            sock.on('connected', connectedListener);
+            startSocket.on('connected', connectedListener);
         });
 
     });
@@ -170,7 +174,6 @@ function createCircuit(data) {
     var circuitNum = torutil.getRandomCircuitNumberOdd();
     startCircuitNum = circuitNum;
     // send to cell 1
-    // TODO: Figure out how to store state and send these pieces sequentially
     
     socket = net.connect(currentCircuit[0][1], currentCircuit[0][0], function() {
         util.log(TAG + "Successfully created connection from " + 
@@ -179,7 +182,11 @@ function createCircuit(data) {
         console.log();
         util.log("---->" + TAG + "Sending open cell with router: " + currentCircuit[0]);
 
+        // Update socket table
         socketTable[[currentCircuit[0][2], 1]] = socket;
+
+        // Set initial socket
+        startSocket = socket;
 
         // Assigned arbitrary size
         var socketBuffer = new Buffer(0);
@@ -216,7 +223,6 @@ function createCircuit(data) {
                         util.log(TAG + "socket on created was called, updating routingTable"); 
                         outgoingEdge = [socket._handle.fd, circuitNum];
                         routingTable[outgoingEdge] = null;
-
                         console.log();
                         util.log("---->" + TAG + "Sending extend relay cell");
                         socket.Created = true;
