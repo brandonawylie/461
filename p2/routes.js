@@ -15,7 +15,7 @@ function commandCreate(obj, socket) {
     var socketTable = globals.socketTable();
     var outgoingEdge = [socket._handle.fd, obj.CircuitID];
 
-    if (routingTable.outgoingEdge == null) {
+    if (routingTable.outgoingEdge === null) {
         //util.log(TAG + "Incoming Socket has no routing match, archiving under " + circuitNum);
         util.log(TAG + "Updating routing table to route to null w/ CircuitID: " + outgoingEdge[1]);
         routingTable[outgoingEdge] = null;
@@ -35,7 +35,7 @@ function commandCreated(obj, socket) {
     var routingTable = globals.routingTable();
     var socketTable = globals.socketTable();
     console.log("Recvd circuitID: " + obj.CircuitID);
-    util.log(TAG + "Setting created event")
+    util.log(TAG + "Setting created event");
     socket.emit('created');
 
 }
@@ -79,8 +79,35 @@ function commandOpenFailed(obj) {
     //TODO implement this
 }
 
-function relayBegin() {
-    //TODO implement this
+function relayBegin(obj, socket, host, port) {
+    var routingTable = globals.routingTable();
+    var key = [socket._handle.fd, obj.CircuitID];
+    if (routingTable[key] === null) {
+        //TODO brandon
+        util.log(TAG + " begin arrived at end, adding a connection to " + host + ":" + port + ", with stream id of " + obj.StreamID);
+        var streamTable = globals.streamTable();
+        var streamKey = [obj.StreamID, 1];
+        streamTable[streamKey] = net.createConnection(port, host, function() {
+            socket.on('data', function(data) {
+                util.log(TAG + " RECIEVED data from server");
+
+                var sock = socket;
+                
+                relay.packAndSendData(data, [obj.StreamID[0], 0], obj.CircuitID);
+            });
+
+            socket.write(relay.createConnectedCell(obj.CircuitID, obj.StreamID), function() {
+                util.log(TAG + "<----- Sent relay connected back with circuitID=" + obj.CircuitID + ", and streamID=" + obj.StreamID);
+            });
+
+        });
+    } else {
+        // we are in the middle, just route it along
+        util.log(TAG + " routing begin through middle routers, forwarding");
+        var sock = routingTable[key][0];
+        var circuitID = routingTable[key][1];
+        sock.write(relay.createBeginCell(circuitID, obj.StreamID, host, port));
+    }
 }
 
 function relayData() {
@@ -91,8 +118,23 @@ function relayEnd() {
     //TODO implement this
 }
 
-function relayConnected() {
-    //TODO implement this
+function relayConnected(obj, socket) {
+    var routingTable = globals.routingTable();
+    var key = [socket._handle.fd, obj.CircuitID];
+    if (routingTable[key] === null) {
+        //TODO brandon
+        util.log(TAG + " connected arrived at source");
+        var streamTable = globals.streamTable();
+        var streamKey = [obj.StreamID, 0];
+        socket.emit('connected');
+    } else {
+        // we are in the middle, just route it along
+        util.log(TAG + " routing connected through middle routers, forwarding");
+        var sock = routingTable[key][0];
+        var circuitID = routingTable[key][1];
+        sock.write(relay.createConnectedCell(circuitID, obj.StreamID));
+    }
+
 }
 
 function relayExtend(obj, socket) {
@@ -327,6 +369,7 @@ function printRoutingTable(routingTable) {
     }
     console.log();
 }
+
 module.exports = {
     commandCreate: commandCreate,
     commandCreated: commandCreated,

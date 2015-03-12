@@ -124,7 +124,9 @@ function unpackRelay(pkt, obj, socket) {
     util.log(TAG + "unpacking relay, cmd: " + obj.Relay.Command);
     switch(obj.Relay.Command) {
         case 1:
-            routes.relayBegin();
+            var port = obj.Relay.Body.split(':')[1];
+            var host = obj.Relay.Body.split(':')[0];
+            routes.relayBegin(pobj, socket, host, port);
             break;
         case 2:
             routes.relayData();
