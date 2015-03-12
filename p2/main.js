@@ -91,6 +91,9 @@ var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSo
     var browserBuffer = new Buffer(0);
 
     incomingSocket.on('data', function(data) {
+
+        //TODO send begin
+        //TODO wait for connected
         util.log(TAG + " RECIEVED data from browser");
 
         browserBuffer = Buffer.concat([browserBuffer, data]);
@@ -107,19 +110,29 @@ var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSo
 
         util.log(TAG + "Recieved end from browser, host requested: " + query + ", assigned streamNumber=" + streamNumber);
 
-        relay.packAndSendData(browserBuffer, streamNumber, startCircuitNum);
-        //relay.packAndSendData(browserBuffer, streamNumber, startCircuitNum);
+        var sock = relay.getSocketByCircuitNumber(startCircuitNum);
+
+        var port = 80;
+
+        if (query.indexOf('https:\\\\') >= 0) {
+            port = 443;
+        } 
+
+        sock.write(relay.createBeginCell(startCircuitNum, streamNumber, query, port), function() {
+            var connectedListener = function() {
+                relay.packAndSendData(data, streamNumber, startCircuitNum);
+                sock.removeListener('connected', connectedListener);
+            };
+
+            sock.on('connected', connectedListener);
+        });
+
     });
 
     incomingSocket.on('end', function() {
         util.log(TAG + "recv'd end from browser");
 
-        // Get end host
-        // Choose stream number
-        // send begin
-
-        // the request line
-
+        //TODO send end
     });
 }).listen(BROSWER_PORT);
 
@@ -290,7 +303,7 @@ function registerRouter(port) {
 function getTorRegistrations(callback) {
     util.log(TAG + "fetching TOR registrations: in progress");
     var fetchClient = spawn('python', ['./fetch.py',
-                                  'Tor61Router-5316',
+                                  'Tor61Router-8008',
                  ]
     );
     var allData = '';
