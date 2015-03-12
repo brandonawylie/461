@@ -98,7 +98,6 @@ var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSo
 
         // the website!!
         var query = str.split(' ')[1];
-
         var streamNumber = torutil.getUniqueStreamNumber(streamTable);
 
         console.log();

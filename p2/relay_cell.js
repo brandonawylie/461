@@ -45,8 +45,6 @@ function createDataCell(circ_id, stream_id, data) {
     buf.writeUInt16BE(body_length, 11);
     buf.writeUInt8(DATA, 13);
     buf = buf.slice(0, 14);
-    console.log("Buffer is: " + buf.toString());
-    console.log("Data is: " + data.toString());
     // Add data to buffer
     buf = Buffer.concat([buf, data]);
     var remainingSize = SIZE - buf.length;
