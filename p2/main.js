@@ -101,8 +101,9 @@ var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSo
         var query = str.split(' ')[1];
 
         var streamNumber = torutil.getUniqueStreamNumber(streamTable);
-
-        streamTable[streamNumber] = incomingSocket;
+        // 0 for a socket to the browser, 1 for a socket to the server
+        var streamKey = [streamNumber, 0];
+        streamTable[streamKey] = incomingSocket;
 
         util.log(TAG + "Recieved end from browser, host requested: " + query + ", assigned streamNumber=" + streamNumber);
 
@@ -228,6 +229,9 @@ function createCircuit(data) {
                                         util.log(TAG + "Relay extend cell sent successfully");
                                     });
                                 } else {
+                                    console.log();
+                                    util.log("Circuit has been completed for router: " + agentID);
+                                    console.log();
                                     socket.removeListener('extended', extendedCallback);
                                 }
                             };
