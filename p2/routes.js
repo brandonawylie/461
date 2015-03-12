@@ -184,7 +184,7 @@ function relayExtend(obj, socket) {
     
     util.log(TAG + "Recvd relay extend cell from circuitID: " + obj.CircuitID);
 
-    if (routingTable[map_a_key] === null) {
+    if (routingTable[map_a_key] === undefined) {
         // Reached end of circuit
         
         // TODO: Create circuit ID here based on 0 or 1
@@ -303,7 +303,9 @@ function relayExtend(obj, socket) {
         }
      }  else {
         // MIDDLE ROUTER CASE: Still in circuit, forward the relay extend
-        map_b_value = routingTable[map_a_key];
+        var map_b_value = routingTable[map_a_key];
+        console.log("map_b: ");
+        console.log(map_b_value);
         var extendCell = relay.createExtendCell(map_b_value[1], extendIP, extendPort, extendAgentID);
         console.log();
         util.log("---->" + TAG + "Middle router, forwarding relay extend cell...");
