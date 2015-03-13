@@ -158,19 +158,15 @@ function unpackRelay(pkt, obj, socket) {
     }
 }
 
-function getUniqueStreamNumber(streamTable) {
+function getUniqueStreamNumber(streamTable, socketFD, circuitNum) {
     var num;
-    var flag = false;
+    var flag = true;
 
-    while (!flag) {
-        flag = true;
+    while (flag) {
         num = Math.floor((Math.random() * 9999) + 1);
-        for (var key in streamTable) {
-            if (streamTable.hasOwnProperty(key)) {
-                if (key === num) {
-                    flag = false;
-                }
-            }
+        var streamKey = [socketFD, circuitNum, num];
+        if (streamTable[streamKey] == null) {
+            break;
         }
     }
 

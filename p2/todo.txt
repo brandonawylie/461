@@ -1,33 +1,25 @@
 Seth:
--Data relay
-    -Proxy
-    -Routes.js
 -Clean up code--> relayExtend
 
 Brandon:
--Stream creation
-    -Proxy side
-    -Routes.js
+-Failures in routes.js
 
 Pair:
--Helper functions for socket functionalitys
--Double check on routing table (This is required for other stuff to work)
--Clean up logging
+-Failure cases, check for robustness (routers failing doesn't make ours go down)
 
-
-
-
+Failure cases:
+1) Node goes down on our circuit (timeout on stuff going acros our circuit):
+    1-Send circuit destroy
+    2-Exit()
+2) No routers found in registration:
+    1-Exit() w/ log
+3) On a socket to another tor router....socket.on('end')----similar to case 1?
+    -Destroy that circuit?
+    -Stop trying to write to that socket
+    -Send end other direction?
+    -Take it out of routingTable
+    -Take it out of socketTable
 
 PROBLEMS/QUESTIONS?
--->Events.  In relay extend can we overwrite the original events for on opened and on created?
-
-
-Also:
--Check to see it works with other router (non self loops)
--Failure cases & timeouts
--Tunnel from browser
--HTTPS?
-
-
-Robust shit:
--It can setup two circuits at the same time on the same socket (fuck this?)
+-Writing to server after it closes
+-Debug problems loading some webpages -- facebook, twitter, youtube
