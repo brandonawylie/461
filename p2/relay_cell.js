@@ -53,6 +53,8 @@ function createDataCell(circ_id, stream_id, data) {
 }
 
 function createEndCell(circ_id, stream_id) {
+    console.log();
+    console.log("Creating end cell w/ circuitNum: " + circ_id + " & " + stream_id);
     // Request to close a stream
     var buf = createBasicRelay(circ_id, stream_id);
     var body_length = 0;

@@ -84,11 +84,13 @@ function relayBegin(obj, socket, host, port) {
     var routingTable = globals.routingTable();
     var key = [socket._handle.fd, obj.CircuitID];
     if (routingTable[key] == null) {
+        // Arrived at server
         util.log(TAG + " begin arrived at end, adding a connection to " + host + ":" + port + ", with stream id of " + obj.StreamID);
         var streamTable = globals.streamTable();
         var streamKey = [socket._handle.fd, obj.CircuitID, obj.StreamID];
         util.log(TAG + "Mapping " + streamKey + " to server socket");
-        streamTable[streamKey] = net.createConnection(parseInt(port), host, function() {
+        streamTable[streamKey] = new net.Socket({allowHalfOpen: true});
+        streamTable[streamKey].connect(parseInt(port), host,  function() {
             
             util.log(TAG + "successful setup of begin socket to server");
             streamTable[streamKey].on('data', function(data) {

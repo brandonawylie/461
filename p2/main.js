@@ -93,7 +93,7 @@ var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSo
     var isTunnel = false;
 
     //var browserBuffer = new Buffer(0);
-    var streamNumber;
+    var streamNumber = torutil.getUniqueStreamNumber(streamTable, startSocket._handle.fd, startCircuitNum);;
     incomingSocket.on('data', function(data) {
 
         console.log();
@@ -137,7 +137,6 @@ var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSo
         var req_data = null;
 
         // Map the stream correctly to the browser
-        streamNumber = torutil.getUniqueStreamNumber(streamTable, startSocket._handle.fd, startCircuitNum);
         var streamKey = [startSocket._handle.fd, startCircuitNum, streamNumber];
         util.log(TAG + "Mapping " + streamKey + " to browser socket");
         streamTable[streamKey] = incomingSocket;
