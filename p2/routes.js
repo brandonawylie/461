@@ -9,6 +9,7 @@ var globals = require('./main');
 var spawn = require('child_process').spawn;
 var TAG = "routes.js: ";
 var PORT = 1337;
+var TIMEOUT_TIME = 3000;
 
 function commandCreate(obj, socket) {
     util.log(TAG + "Create Cell recv'd for circuitID: " + obj.CircuitID);
@@ -245,20 +246,38 @@ function relayExtend(obj, socket) {
                 extendSocket.write(command.createOpenCell(agentID, extendAgentID), function() {
                     util.log(TAG + "At relay extend, sent open");
 
-                    // Opened received for this new socket connection
-                    
+                    // Set an open timer
+                    var openTimer = setTimeout(function() {
+                        socket.write(relay.createExtendFailedCell(obj.CircuitID), function() {
+                            util.log(TAG + "open failed in a middle router, sending extend failed back");
+                        });
+                    }, TIMEOUT_TIME);
 
                     var openedListener = function() {
                         util.log(TAG + "At relay extend, opened was received");
                         extendSocket.Opened = true;
 
+                        // clear timeout
+                        clearTimeout(openTimer);
+
                         // Write the create cell
                         util.log("---->" + TAG + "At relay extend, sending create cell...");
                         extendSocket.write(command.createCreateCell(extendCircuitNum), function() {
                             util.log(TAG + "At relay extend, sent create");
+                    
+                            // Set a create timer
+                            var createTimer = setTimeout(function() {
+                                socket.write(relay.createExtendFailedCell(obj.CircuitID), function() {
+                                    util.log(TAG + "Create failed in a middle router, sending extend failed back");
+                                });
+                            }, TIMEOUT_TIME);
 
                             // Once opened & sent create circuit with the final router, we need to return the relay extended
                             var createdListener = function() {
+
+                                // Clear create timer
+                                clearTimeout(createTimer);
+
                                 util.log(TAG + "At relay extend, created was received");
                                 extendSocket.Created = true;
                     
@@ -319,14 +338,23 @@ function relayExtend(obj, socket) {
             extendSocket.write(createCell, function() {
                 util.log(TAG + "At relay extend, sent create");
 
-                    util.log("extend circuitNum: " + extendCircuitNum);
-                    util.log("incoming circuitNum: " + map_a_value[1]);
+                // Set a create timer
+                var createTimer = setTimeout(function() {
+                    socket.write(relay.createExtendFailedCell(obj.CircuitID), function() {
+                        util.log(TAG + "Create failed in a middle router, sending extend failed back");
+                    });
+                }, TIMEOUT_TIME);
+
+                util.log("extend circuitNum: " + extendCircuitNum);
+                util.log("incoming circuitNum: " + map_a_value[1]);
 
                 // Once opened & sent create circuit with the final router, we need to return the relay extended
                 var createdListener = function() {
                     util.log(TAG + "At relay extend, created was received");
                     extendSocket.Created = true;
         
+                    clearTimeout(createTimer);
+
                     // Update routing table
                     util.log(TAG + "Updating routing table both ways");
 
@@ -510,6 +538,10 @@ function getOddOrEvenCircuit(socketTable, extendAgentID, currSocket) {
         console.log("ERROR GRABBING CORRECT CircuitID");
         return getRandomCircuitNumberEven();
     }
+}
+
+function writeRelayExtendFailed() {
+
 }
 
 module.exports = {

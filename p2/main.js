@@ -353,29 +353,31 @@ function createCircuit(data) {
                                 }
                             };
 
-                            socket.on('extended', extendedCallback);
-
                             // set extend timeout
                             timers["extendTimeout"] = setTimeout(function() {
                                 extendFailed(socket, openedCallback, createdCallback, extendedCallback);
                             }, TIMEOUT_TIME);
 
                             socket.on('extendfailed', function() {
+                                clearTimeout(timers["extendTimeout"]);
                                 extendFailed(socket, openedCallback, createdCallback, extendedCallback);
                             }); 
+
+                            socket.on('extended', extendedCallback);
                         });
 
                         socket.removeListener('created', createdCallback);
                     };
 
-                    socket.on('createfailed', function() {
-                        createFailed(socket, openedCallback, createdCallback);
-                    });
-
                     // set create timeout
                     timers["createTimeout"] = setTimeout(function() {
                         createFailed(socket, openedCallback, createdCallback);
                     }, TIMEOUT_TIME);
+                    
+                    socket.on('createfailed', function() {
+                        clearTimeout(timers["createTimeout"]);
+                        createFailed(socket, openedCallback, createdCallback);
+                    });
 
                     socket.on('created', createdCallback);
                     
@@ -384,13 +386,14 @@ function createCircuit(data) {
                 socket.removeListener('opened', openedCallback);
             };
 
-            socket.on('openfailed', function() {
-                openFailed(socket, openedCallback);
-            });
-
             timers["openTimeout"] = setTimeout(function() {
                 openFailed(socket, openedCallback);
             }, TIMEOUT_TIME);
+
+            socket.on('openfailed', function() {
+                clearTimeout(timers["openTimeout"]);
+                openFailed(socket, openedCallback);
+            });
 
             socket.on('opened', openedCallback);
             
