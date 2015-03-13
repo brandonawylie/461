@@ -9,22 +9,28 @@ var spawn   = require('child_process').spawn;
 var torutil = require('./torutil');
 var command = require('./command_cell');
 var relay   = require('./relay_cell');
-var BROSWER_PORT = 1337;
 var TOR_PORT = 1338;
 // registations
 var torRegistrations = '';
+var routerAddress = "";
+var searchTorName = 'Tor61Router';
+
+// ./run <group number> <instance number> <HTTP Proxy port>
+if (process.argv.length !== 5) {
+    util.log("Usage: node main.js <group number> <instance number> <HTTP Proxy port>");
+    util.log("Our usage: node main.js 5316 <instance> 1337");
+    process.exit(1);
+}
 
 // register ourself
-var torName = "Tor61Router-0023-0046";
-var groupNum = 5316;
-var instanceNum = Math.floor((Math.random() * 9999) + 1);
+var groupNum = parseInt(process.argv[2]);
+var instanceNum = parseInt(process.argv[3]);
+var BROSWER_PORT = parseInt(process.argv[4]);
+var agentID = groupNum << 16 | instanceNum;
+var torName = "Tor61Router";
 var router_name = torName + "-" + groupNum + "-" + instanceNum;
-var agentID = Math.floor((Math.random() * 9999) + 1);
-
 // TAG ourselves to log
 var TAG = agentID + ": main.js: ";
-
-var routerAddress = "";
 
 require('dns').lookup(require('os').hostname(), function (err, add, fam) {
   routerAddress = add;
@@ -55,7 +61,6 @@ exports.agentID = function() {
 
 var tor_server = net.createServer({allowHalfOpen: true}, function(incomingSocket) {
     util.log(TAG + "Received Incoming Socket from tor router " + incomingSocket.remoteAddress + ":" + incomingSocket.remotePort);
-    var circuitNum = torutil.getRandomCircuitNumberEven();
 
     // Assigned arbitrary size
     var socketBuffer = new Buffer(0);
@@ -88,14 +93,22 @@ var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSo
     var isTunnel = false;
 
     //var browserBuffer = new Buffer(0);
-    var streamNumber;
+    var streamNumber = torutil.getUniqueStreamNumber(streamTable, startSocket._handle.fd, startCircuitNum);;
     incomingSocket.on('data', function(data) {
 
-        // From last proxy --- Grabbing header stuff
+        console.log();
+        util.log(TAG + " RECEIVED data from browser");
+        console.log("Browser socket: " + incomingSocket._handle.fd);
+        console.log("Start socket: " + startSocket._handle.fd);
+        console.log();
+
+        // From last proxy project, & modifed
+        // Tunnel data through tor, simply as data buffer
         if (isTunnel) {
-            tunnel.write(data);
+            relay.packAndSendData(data, streamNumber, startCircuitNum, startSocket);
             return;
         }
+
         // parse the browser's request (header ends on empty line)
         var header_and_data = data.toString().split('\r\n\r\n');
         if (header_and_data.length == 2) {
@@ -123,23 +136,16 @@ var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSo
         var req_array = null;
         var req_data = null;
 
-        console.log();
-        util.log(TAG + " RECIEVED data from browser");
-        console.log("Browser socket: " + incomingSocket._handle.fd);
-        console.log("Start socket: " + startSocket._handle.fd);
-        console.log();
-
         // Map the stream correctly to the browser
-        streamNumber = torutil.getUniqueStreamNumber(streamTable);
         var streamKey = [startSocket._handle.fd, startCircuitNum, streamNumber];
         util.log(TAG + "Mapping " + streamKey + " to browser socket");
         streamTable[streamKey] = incomingSocket;
 
         // open a TCP socket to them
         if (req_line[0] === "CONNECT") {
-
+            // CASE 1: Browser is tunneling
             console.log("--------------------------------------------");
-            console.log("Attempting to connect, not ready for this....");
+            console.log("Tunneling Attempting....");
             console.log("--------------------------------------------");
             // set the connection/proxyconnection to kee-alive        
             isTunnel = true;
@@ -149,10 +155,27 @@ var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSo
 
             // -------------------------------------------------------
             // --------------------------------------------------------
-            // TODO: FIX TUNNELING
-            // -------------------------------------------------------
-            // -------------------------------------------------------
+            var beginCell = relay.createBeginCell(startCircuitNum, streamNumber, host, port);
+            
+            startSocket.write(beginCell, function() {
+                var connectedListener = function() {
+                    util.log(TAG + "Connected complete for tunnel stream");
+                    console.log();
+                    
+                    // Write a 200 OK to the browser, so that it will start
+                    // sending the data
+                    util.log("----> " + TAG + "Sending 200 OK to browser...");
+                    incomingSocket.write("HTTP/1.1 200 OK\r\n\r\n", function() {
+                        util.log("Sent a 200 OK to browser socket, ready to take data");
+                    });
+
+                    startSocket.removeListener('connected', connectedListener);
+                };
+                startSocket.on('connected', connectedListener);
+            });
+
         } else {
+            // CASE 2: Browser is NOT tunneling
             // Setup connection to close, and create request to send
             req_args.Connection = "close";
             req_args['Proxy-connection'] = "close";
@@ -185,21 +208,21 @@ var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSo
     incomingSocket.on('end', function() {
         util.log(TAG + "recv'd end from browser");
         startSocket.write(relay.createEndCell(startCircuitNum, streamNumber));
-        //TODO send end
     });
 }).listen(BROSWER_PORT);
 
 /*========================
 TOR SERVER STARTS UP HERE
 ========================*/
-getTorRegistrations(function(data) {
-    if (data === null) {
-        // error
-        util.log(TAG + "errored getting registrations");
+getTorRegistrations(searchTorName, function(data) {
+    if (data.length === 0) {
+        // Exit, we found nothing
+        util.log("No tor nodes found on the registration, exiting...");
+        process.exit(0);
     }
-    
+
     torRegistrations = torutil.parseRegistrations(data);
-    
+
     util.log(TAG + "Registrations recieved: \n" + data);
 
     tor_server.listen(TOR_PORT, function() {
@@ -217,6 +240,7 @@ function createCircuit(data) {
         //currentCircuit.push(torRegistrations[Math.floor((Math.random() * torRegistrations.length))]);
         currentCircuit.push(['127.0.0.1', '1338', agentID]);
     }
+
     util.log(TAG + "Chose 4 random routers with ip addresses: " + 
              currentCircuit[0][0] + ", " + currentCircuit[1][0] + ", " + currentCircuit[2][0]);
 
@@ -224,6 +248,7 @@ function createCircuit(data) {
     startCircuitNum = circuitNum;
     // send to cell 1
     
+    util.log(TAG + "Connecting to first router...");
     socket = net.connect(currentCircuit[0][1], currentCircuit[0][0], function() {
         util.log(TAG + "Successfully created connection from " + 
                  agentID + " to " + currentCircuit[0][0] + ":" + currentCircuit[0][1] + ", " + currentCircuit[0][2]);
@@ -272,6 +297,7 @@ function createCircuit(data) {
                         util.log(TAG + "socket on created was called, updating routingTable"); 
                         outgoingEdge = [socket._handle.fd, circuitNum];
                         routingTable[outgoingEdge] = null;
+                        console.log(outgoingEdge + ":" + routingTable[outgoingEdge]);
                         console.log();
                         util.log("---->" + TAG + "Sending extend relay cell");
                         socket.Created = true;
@@ -346,6 +372,9 @@ function createCircuit(data) {
 function registerRouter(port) {
 
     // Currently has dummy registration info
+    console.log();
+    util.log("Registering as " + router_name);
+    console.log();
     var regClient = spawn('python', ['./registration_client.py', port, router_name, agentID]);
 
     util.log(TAG + "registering: in progress");
@@ -368,10 +397,10 @@ function registerRouter(port) {
 }
 
 
-function getTorRegistrations(callback) {
-    util.log(TAG + "fetching TOR registrations: in progress");
+function getTorRegistrations(queryName, callback) {
+    util.log(TAG + "fetching TOR registrations that match \"" + queryName + "\"");
     var fetchClient = spawn('python', ['./fetch.py',
-                                  'Tor61Router-0023-0023',
+                                  queryName,
                  ]
     );
     var allData = '';

@@ -16,7 +16,7 @@ function commandCreate(obj, socket) {
     var socketTable = globals.socketTable();
     var outgoingEdge = [socket._handle.fd, obj.CircuitID];
 
-    if (routingTable.outgoingEdge === null) {
+    if (routingTable.outgoingEdge == null) {
         //util.log(TAG + "Incoming Socket has no routing match, archiving under " + circuitNum);
         util.log(TAG + "Updating routing table to route to null w/ CircuitID: " + outgoingEdge[1]);
         routingTable[outgoingEdge] = null;
@@ -86,11 +86,13 @@ function relayBegin(obj, socket, host, port) {
     var routingTable = globals.routingTable();
     var key = [socket._handle.fd, obj.CircuitID];
     if (routingTable[key] == null) {
+        // Arrived at server
         util.log(TAG + " begin arrived at end, adding a connection to " + host + ":" + port + ", with stream id of " + obj.StreamID);
         var streamTable = globals.streamTable();
         var streamKey = [socket._handle.fd, obj.CircuitID, obj.StreamID];
         util.log(TAG + "Mapping " + streamKey + " to server socket");
-        streamTable[streamKey] = net.createConnection(parseInt(port), host, function() {
+        streamTable[streamKey] = new net.Socket({allowHalfOpen: true});
+        streamTable[streamKey].connect(parseInt(port), host,  function() {
             
             util.log(TAG + "successful setup of begin socket to server");
             streamTable[streamKey].on('data', function(data) {
@@ -218,18 +220,20 @@ function relayExtend(obj, socket) {
     
     util.log(TAG + "Recvd relay extend cell from circuitID: " + obj.CircuitID);
 
-    if (routingTable[map_a_key] === undefined) {
+    if (routingTable[map_a_key] == null) {
         // Reached end of circuit
         
-        // TODO: Create circuit ID here based on 0 or 1
         // Need new circuit Number to extend circuit
-        var extendCircuitNum = Math.floor(Math.random() * 65535);
+        var extendCircuitNum;
         util.log(TAG + "At relay extend, reached end of circuit");
-        if (extendSocket === null) {
+        if (extendSocket == null) {
             // CASE 1: No socket connection, send open & then create
             
             util.log(TAG + "At relay extend, no socket connection");
             util.log(TAG + "Creating socket...");
+
+            // Get odd circuit number because we are opening a socket
+            extendCircuitNum = getRandomCircuitNumberOdd;
             extendSocket = net.connect(extendPort, extendIP, function() {
                 util.log(TAG + "Extend socket created successfully, adding to socket table");
                 // Add socket to socket table
@@ -303,6 +307,13 @@ function relayExtend(obj, socket) {
             util.log(TAG + "At relay extend, socket connection exists");
             console.log();
             util.log("---->" + TAG + "Sending create cell to extend circuit");
+            
+            // Find if we need an even or odd circuit number based on the socket connection
+            extendCircuitNum = getOddOrEvenCircuit(socketTable, extendAgentID, socket);
+            console.log();
+            console.log("Chose CircuitID: " + extendCircuitNum);
+            console.log();
+
             var createCell = command.createCreateCell(extendCircuitNum);
             extendSocket.write(createCell, function() {
                 util.log(TAG + "At relay extend, sent create");
@@ -468,6 +479,38 @@ function printStreamTable(streamTable) {
     console.log();
 }
 
+function getRandomCircuitNumberEven() {
+    var val = Math.floor((Math.random() * 65535));
+    if (val % 2 !== 0) {
+        val += 1;
+    }
+    return val;
+}
+function getRandomCircuitNumberOdd() {
+    var val = Math.floor((Math.random() * 65535));
+    if (val % 2 === 0) {
+        val += 1;
+    }
+    return val;
+}
+
+function getOddOrEvenCircuit(socketTable, extendAgentID, currSocket) {
+    var outSocket = socketTable[[agentID, 1]];
+    var inSocket = socketTable[[agentID, 0]];
+
+    if(outSocket !== null && outSocket._handle.fd !== currSocket._handle.fd) {
+        // Contains socket that was created outgoing --> Create odd
+        return getRandomCircuitNumberOdd();
+    } else if (inSocket !== null && inSocket._handle.fd !== currSocket._handle.fd) {
+        // Contains socket that was created incoming
+        return getRandomCircuitNumberEven();
+    } else {
+        // No current socket with this router
+        console.log("ERROR GRABBING CORRECT CircuitID");
+        return getRandomCircuitNumberEven();
+    }
+}
+
 module.exports = {
     commandCreate: commandCreate,
     commandCreated: commandCreated,
@@ -483,5 +526,5 @@ module.exports = {
     relayExtended: relayExtended,
     relayBeginFailed: relayBeginFailed,
     relayExtendFailed: relayExtendFailed,
-    relayExtend: relayExtend
+    relayExtend: relayExtend,
 };
