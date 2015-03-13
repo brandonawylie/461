@@ -25,7 +25,7 @@ if (process.argv.length !== 5) {
 // register ourself
 var TOR_PORT = 1338;
 var groupNum = parseInt(process.argv[2]);
-var instanceNum = parseInt(process.argv[3]);
+var instanceNum = process.argv[3];
 var BROSWER_PORT = parseInt(process.argv[4]);
 var agentID = groupNum << 16 | instanceNum;
 var torName = "Tor61Router";
@@ -258,8 +258,8 @@ function createCircuit(data) {
     util.log(TAG + "Creating circuit...");
     var currentCircuit = [];
     for (var i = 0; i < 3; i++) {
-        currentCircuit.push(torRegistrations[Math.floor((Math.random() * torRegistrations.length))]);
-        //currentCircuit.push(['127.0.0.1', '1338', agentID]);
+        //currentCircuit.push(torRegistrations[Math.floor((Math.random() * torRegistrations.length))]);
+        currentCircuit.push(['127.0.0.1', '1338', agentID]);
     }
 
     util.log(TAG + "Chose 4 random routers with ip addresses: " + 
@@ -270,7 +270,20 @@ function createCircuit(data) {
     // send to cell 1
     
     util.log(TAG + "Connecting to first router...");
-    socket = net.connect(currentCircuit[0][1], currentCircuit[0][0], function() {
+
+    timers["connectTimeout"] = setTimeout(function() {
+        connectFailed(socket);
+    }, TIMEOUT_TIME);
+
+    socket = new net.Socket({allowHalfOpen: true});
+
+    socket.on('error', function(err) {
+        util.log("Something went wrong, error: " + err);
+    });
+
+    socket.connect(currentCircuit[0][1], currentCircuit[0][0], function() {
+        clearTimeout(timers["connectTimeout"]);
+
         util.log(TAG + "Successfully created connection from " + 
                  agentID + " to " + currentCircuit[0][0] + ":" + currentCircuit[0][1] + ", " + currentCircuit[0][2]);
         // Update socket table
@@ -283,10 +296,6 @@ function createCircuit(data) {
         socket.on('end', function() {
             torutil.lookupAndDestroy(socket);
             createCircuit();
-        });
-
-        socket.on('error', function(err) {
-            util.log(TAG + " something happened: " + err);
         });
 
         // Assigned arbitrary size
@@ -415,13 +424,6 @@ function createCircuit(data) {
             
         });
 
-        // send to cell 2
-        // util.log(TAG + "--->    Sending relay to router: " + currentCircuit[1]);
-        // socketTable[currentCircuit[0][2]].write(relay.createExtendCell(circuitNum, 0, currentCircuit[1][0], currentCircuit[1][1], currentCircuit[1][2]));
-
-        // // send to cell 3
-        // util.log(TAG + "--->    Sending relay to router: " + currentCircuit[2]);
-        // socketTable[currentCircuit[0][2]].write(relay.createExtendCell(circuitNum, 0, currentCircuit[2][0], currentCircuit[2][1], currentCircuit[1][2]));
     });
     
 }
@@ -480,6 +482,11 @@ function getTorRegistrations(queryName, callback) {
  }
 exports.createCircuit = createCircuit;
 
+function connectFailed(socket) {
+    console.log();
+    util.log(TAG + "Connect timed out, trying to establish another circuit");
+    createCircuit();
+}
 
  function openFailed(socket, openedCallback) {
     console.log();
@@ -493,6 +500,7 @@ function createFailed(socket, openedCallback, createdCallback) {
     util.log(TAG + "createfailed recieved, trying to establish another circuit");
     socket.removeListener('opened', openedCallback);
     socket.removeListener('created', createdCallback);
+    createCircuit();
 }
 
 function extendFailed(socket, openedCallback, createdCallback, extendedCallback) {
