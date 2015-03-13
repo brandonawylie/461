@@ -145,7 +145,7 @@ function relayData(obj, socket) {
         console.log();
         util.log(TAG + "Writing data to... :" + endSocket._handle.fd);
         endSocket.write(data, function() {
-            util.log(TAG + "Data written: " + data);
+            util.log(TAG + "Data written: ");
         });
     } else {
         // Send the data through the circuit
@@ -170,6 +170,7 @@ function relayEnd(obj, socket) {
     var routeVal = routingTable[routingKey];
     if (routeVal == null) {
         if (streamTable[streamKey] != null) {
+            streamTable[streamKey].end();
             delete streamTable[streamKey];
         }
     } else {
