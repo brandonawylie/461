@@ -85,34 +85,35 @@ var tor_server = net.createServer({allowHalfOpen: true}, function(incomingSocket
 // Proxy
 var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSocket) {
     util.log(TAG + "Received Incoming Socket from browser " + incomingSocket.remoteAddress + ":" + incomingSocket.remotePort);
-    
-    var browserBuffer = new Buffer(0);
+    var isTunnel = false;
+
+    //var browserBuffer = new Buffer(0);
 
     incomingSocket.on('data', function(data) {
 
-        util.log(TAG + " RECIEVED data from browser");
+        //browserBuffer = Buffer.concat([browserBuffer, data]);
 
-        browserBuffer = Buffer.concat([browserBuffer, data]);
-
-        var str = data.toString().split('\n')[0];
-
-        // the website!!
-        var query = str.split(' ')[1];
-        var streamNumber = torutil.getUniqueStreamNumber(streamTable);
-
-        console.log();
-        console.log("Browser socket: " + incomingSocket._handle.fd);
-        console.log("Start socket: " + startSocket._handle.fd);
-        console.log();
-
-        // The key to map to the browser's socket
-        var streamKey = [startSocket._handle.fd, startCircuitNum, streamNumber];
-        util.log(TAG + "Mapping " + streamKey + " to browser socket");
-        streamTable[streamKey] = incomingSocket;
-        //util.log(TAG + "Recieved data from browser, host requested: " + query + ", assigned streamNumber=" + streamNumber);
-        var req_url = url.parse(query); 
+        // From last proxy --- Grabbing header stuff
+        if (isTunnel) {
+            tunnel.write(data);
+            return;
+        }
+        // parse the browser's request (header ends on empty line)
+        var header_and_data = data.toString().split('\r\n\r\n');
+        if (header_and_data.length == 2) {
+            req_array = header_and_data[0];
+            req_data = header_and_data[1];
+        } else {
+            // Data is just header
+            req_array = data.toString();
+        }
+        req_array = req_array.replace(/\r/gm, '').split('\n');
+        var req_line = req_array[0].split(' ');
+        var req_args = torutil.parseArgs(req_array.slice(1, req_array.length));
+        var req_url = url.parse(req_line[1]);
+        
         // Specify port if null
-        var is_https = (query.indexOf("https") > -1);
+        var is_https = (req_array[0].indexOf("https") > -1);
         if (req_url.port === null) {
             if (is_https) {
                 req_url.port = 443;
@@ -121,21 +122,66 @@ var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSo
             }
         }
 
-        util.log(TAG + "Recieved data from browser, host requested: " + req_url.hostname + ":" + req_url.port + ", assigned streamNumber=" + streamNumber);
+        var req_array = null;
+        var req_data = null;
+
         console.log();
-        util.log("----> " + TAG + "Sending begin cell...");
-        startSocket.write(relay.createBeginCell(startCircuitNum, streamNumber, req_url.hostname, req_url.port), function() {
-            var connectedListener = function() {
-                util.log(TAG + "Connected complete for stream");
-                console.log();
-                util.log("----> " + TAG + "Sending data...");
-                relay.packAndSendData(data, streamNumber, startCircuitNum, startSocket);
-                startSocket.removeListener('connected', connectedListener);
-            };
+        util.log(TAG + " RECIEVED data from browser");
+        console.log("Browser socket: " + incomingSocket._handle.fd);
+        console.log("Start socket: " + startSocket._handle.fd);
+        console.log();
 
-            startSocket.on('connected', connectedListener);
-        });
+        // Map the stream correctly to the browser
+        var streamNumber = torutil.getUniqueStreamNumber(streamTable);
+        var streamKey = [startSocket._handle.fd, startCircuitNum, streamNumber];
+        util.log(TAG + "Mapping " + streamKey + " to browser socket");
+        streamTable[streamKey] = incomingSocket;
 
+        // open a TCP socket to them
+        if (req_line[0] === "CONNECT") {
+
+            console.log("--------------------------------------------");
+            console.log("Attempting to connect, not ready for this....");
+            console.log("--------------------------------------------");
+            // set the connection/proxyconnection to kee-alive        
+            isTunnel = true;
+            // determine the host & port, then create a connection
+            host = req_line[1].split(':')[0];
+            port = req_line[1].split(':')[1];
+
+            // -------------------------------------------------------
+            // --------------------------------------------------------
+            // TODO: FIX TUNNELING
+            // -------------------------------------------------------
+            // -------------------------------------------------------
+        } else {
+            // Setup connection to close, and create request to send
+            req_args.Connection = "close";
+            req_args['Proxy-connection'] = "close";
+            sendStuff = torutil.getRequestString(req_line, req_args);
+            port = req_url.port;
+            host = req_url.hostname;
+            console.log();
+            util.log(TAG + "Host requested: " + host + ":" + port + ", assigned streamNumber=" + streamNumber);
+            console.log();
+                
+            var dataString = sendStuff + '\r\n\r\n';
+            var cleanedData = new Buffer(dataString.length);
+            cleanedData.write(dataString);
+            util.log("----> " + TAG + "Sending begin cell...");
+            var beginCell = relay.createBeginCell(startCircuitNum, streamNumber, host, port);
+            startSocket.write(beginCell, function() {
+                var connectedListener = function() {
+                    util.log(TAG + "Connected complete for stream");
+                    console.log();
+                    util.log("----> " + TAG + "Sending data...");
+                    relay.packAndSendData(cleanedData, streamNumber, startCircuitNum, startSocket);
+                    startSocket.removeListener('connected', connectedListener);
+                };
+
+                startSocket.on('connected', connectedListener);
+            });
+        }
     });
 
     incomingSocket.on('end', function() {
@@ -314,7 +360,7 @@ function registerRouter(port) {
 function getTorRegistrations(callback) {
     util.log(TAG + "fetching TOR registrations: in progress");
     var fetchClient = spawn('python', ['./fetch.py',
-                                  'Tor61Router-0001-0001',
+                                  'Tor61Router-0023-0023',
                  ]
     );
     var allData = '';

@@ -177,6 +177,25 @@ function getUniqueStreamNumber(streamTable) {
     return num;
 }
 
+function parseArgs(arg_arr) {
+    var retVal = {};
+    for (var i = 0; i < arg_arr.length; i++) {
+        var line = arg_arr[i].split(':');
+        if (line.length === 1) continue;
+        retVal[line[0]] = line[1];
+    }
+    return retVal;
+}
+
+function getRequestString(top, args) {
+    var retVal = top[0] + " " + top[1] + " " + "HTTP/1.0\r\n";
+    for (var key in args) {
+        if (args.hasOwnProperty(key)) {
+            retVal += key + ": " + args[key] + "\r\n";
+        }
+    }
+    return retVal;
+}
 
 module.exports = {
     parseRegistrations: parseRegistrations,
@@ -187,5 +206,7 @@ module.exports = {
     getRandomCircuitNumberOdd: getRandomCircuitNumberOdd,
     unpackCommand: unpackCommand,
     unpackRelay: unpackRelay,
-    getUniqueStreamNumber: getUniqueStreamNumber
+    getUniqueStreamNumber: getUniqueStreamNumber,
+    parseArgs: parseArgs,
+    getRequestString: getRequestString
 };
