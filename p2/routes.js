@@ -43,6 +43,7 @@ function commandCreated(obj, socket) {
 
 function commandCreateFailed(obj) {
     //TODO implement this
+    socket.emit('createfailed');
 }
 
 function commandDestroy(obj) {
@@ -76,8 +77,9 @@ function commandOpened(obj, socket) {
     socket.emit('opened');
 }
     
-function commandOpenFailed(obj) {
+function commandOpenFailed(obj, socket) {
     //TODO implement this
+    socket.emit('openfailed');
 }
 
 function relayBegin(obj, socket, host, port) {
@@ -280,6 +282,12 @@ function relayExtend(obj, socket) {
                                 extendSocket.removeListener('created', createdListener);
                             };
 
+                            extendSocket.on('createfailed', function() {
+                                socket.write(relay.createExtendFailedCell(obj.CircuitID), function() {
+                                    util.log(TAG + "create failed in a middle router, sending extend failed back");
+                                });
+                            });
+
                             extendSocket.on('created', createdListener);
                         });
 
@@ -328,8 +336,16 @@ function relayExtend(obj, socket) {
                     socket.write(extendedCell, function() {
                         util.log(TAG + "Relay extended sent back along circuit");
                     });
+
                     extendSocket.removeListener('created', createdListener);
                 };
+
+                extendSocket.on('createfailed', function() {
+                    socket.write(relay.createExtendFailedCell(obj.CircuitID), function() {
+                        util.log(TAG + "create failed in a middle router, sending extend failed back");
+                    });
+                });
+
                 extendSocket.on('created', createdListener);
             });
         }
@@ -341,6 +357,12 @@ function relayExtend(obj, socket) {
         util.log("---->" + TAG + "Middle router, forwarding relay extend cell...");
         map_b_value[0].write(extendCell, function() {
             util.log(TAG + "At relay extend, forwarded relay Extend cell");
+            map_b_value[0].on('extendfailed', function() {
+                socket.write(relay.createExtendFailedCell(obj.CircuitID), function() {
+                    util.log(TAG + "extendfailed recv'd by middle router, sending relay extendfailed back");
+                });
+            });
+
         });
     }
 }

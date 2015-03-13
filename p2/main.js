@@ -308,12 +308,25 @@ function createCircuit(data) {
 
                         socket.removeListener('created', createdCallback);
                     };
+                    socket.on('createfailed', function() {
+                        util.log(TAG + "createfailed recieved, trying to establish another circuit");
+                        socket.removeListener('opened', openedCallback);
+                        socket.removeListener('created', createdCallback);
+                        createCircuit();
+                    });
+
                     socket.on('created', createdCallback);
                     
                 });
 
                 socket.removeListener('opened', openedCallback);
             };
+
+            socket.on('openfailed', function() {
+                util.log(TAG + "openfailed recieved, trying to establish another circuit");
+                socket.removeListener('opened', openedCallback);
+                createCircuit();
+            });
 
             socket.on('opened', openedCallback);
             
