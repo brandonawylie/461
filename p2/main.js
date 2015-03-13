@@ -87,12 +87,27 @@ var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSo
     util.log(TAG + "Received Incoming Socket from browser " + incomingSocket.remoteAddress + ":" + incomingSocket.remotePort);
     
     var browserBuffer = new Buffer(0);
+    var streamNumber = torutil.getUniqueStreamNumber(streamTable);
 
     incomingSocket.on('data', function(data) {
 
         util.log(TAG + " RECIEVED data from browser");
 
         browserBuffer = Buffer.concat([browserBuffer, data]);
+
+        var header_and_data = data.toString().split('\r\n\r\n');
+        var req_array = null;
+        var req_data = null;
+        if (header_and_data.length == 2) {
+            req_array = header_and_data[0];
+            req_data = header_and_data[1];
+        } else {
+            // Data is just header
+            req_array = data.toString();
+        }
+        req_array = req_array.replace(/\r/gm, '').split('\n');
+        var req_line = req_array[0].split(' ');
+        var req_url = url.parse(req_line[1]);
 
         var str = data.toString().split('\n')[0];
 
@@ -109,10 +124,8 @@ var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSo
         var streamKey = [startSocket._handle.fd, startCircuitNum, streamNumber];
         util.log(TAG + "Mapping " + streamKey + " to browser socket");
         streamTable[streamKey] = incomingSocket;
-        //util.log(TAG + "Recieved data from browser, host requested: " + query + ", assigned streamNumber=" + streamNumber);
-        var req_url = url.parse(query); 
-        // Specify port if null
-        var is_https = (query.indexOf("https") > -1);
+
+        var is_https = (req_array[0].indexOf("https") > -1);
         if (req_url.port === null) {
             if (is_https) {
                 req_url.port = 443;
@@ -140,7 +153,7 @@ var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSo
 
     incomingSocket.on('end', function() {
         util.log(TAG + "recv'd end from browser");
-
+        startSocket.write(relay.createEndCell(startCircuitNum, streamNumber));
         //TODO send end
     });
 }).listen(BROSWER_PORT);

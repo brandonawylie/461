@@ -98,6 +98,15 @@ function relayBegin(obj, socket, host, port) {
                 relay.packAndSendData(data, streamKey[2], obj.CircuitID, socket);
             });
 
+            streamTable[streamKey].on('end', function(data) {
+                socket.write(relay.createEndCell(obj.CircuitID, obj.StreamID), function() {
+                    //streamTable[streamKey].end();
+                    socket.write(relay.createEndCell(obj.CircuitID, obj.StreamID));
+                    delete streamTable[streamKey];
+
+                });
+            });
+
             console.log();
             util.log("<---- " + TAG + "Sending relay connected...");
             socket.write(relay.createConnectedCell(obj.CircuitID, obj.StreamID), function() {
@@ -151,8 +160,22 @@ function relayData(obj, socket) {
     }
 }
 
-function relayEnd() {
+function relayEnd(obj, socket) {
     //TODO implement this
+    var routingTable = globals.routingTable();
+    var streamTable = globals.streamTable();
+    var routingKey = [socket._handle.fd, obj.CircuitID];
+    var streamKey = [socket._handle.fd, obj.CircuitID, obj.StreamID];
+
+    var routeVal = routingTable[routingKey];
+    if (routeVal == null) {
+        if (streamTable[streamKey] != null) {
+            delete streamTable[streamKey];
+        }
+    } else {
+        util.log(TAG + "routing table has entry for " + routingKey);
+        routeVal[0].write(relay.createEndCell(routeVal[1], obj.StreamID));
+    }
 }
 
 function relayConnected(obj, socket) {
