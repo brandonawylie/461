@@ -7,6 +7,8 @@ var spawn   = require('child_process').spawn;
 var torutil = require('./torutil');
 var command = require('./command_cell');
 var relay   = require('./relay_cell');
+var TIMEOUT_TIME = 3000;
+// registations
 
 // registations to query, and store
 var torRegistrations = '';
@@ -43,6 +45,7 @@ var startCircuitNum = null;
 // (circuit no, agent no) => (circuit no b, agent no b)
 routingTable  = {};
 socketTable   = {};
+timers = {};
 streamTable   = {};
 
 // export our variables we want to use everywhere.
@@ -226,6 +229,7 @@ var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSo
     });
 }).listen(BROSWER_PORT);
 
+
 /*========================
 TOR SERVER STARTS UP HERE
 ========================*/
@@ -246,14 +250,16 @@ getTorRegistrations(searchTorName, function(data) {
         createCircuit(data);
     });
 });
-
+/*========================
+TOR SERVER STARTS UP HERE
+========================*/
 
 function createCircuit(data) {
     util.log(TAG + "Creating circuit...");
     var currentCircuit = [];
     for (var i = 0; i < 3; i++) {
-        //currentCircuit.push(torRegistrations[Math.floor((Math.random() * torRegistrations.length))]);
-        currentCircuit.push(['127.0.0.1', '1338', agentID]);
+        currentCircuit.push(torRegistrations[Math.floor((Math.random() * torRegistrations.length))]);
+        //currentCircuit.push(['127.0.0.1', '1338', agentID]);
     }
 
     util.log(TAG + "Chose 4 random routers with ip addresses: " + 
@@ -267,10 +273,6 @@ function createCircuit(data) {
     socket = net.connect(currentCircuit[0][1], currentCircuit[0][0], function() {
         util.log(TAG + "Successfully created connection from " + 
                  agentID + " to " + currentCircuit[0][0] + ":" + currentCircuit[0][1] + ", " + currentCircuit[0][2]);
-        // send open cell
-        console.log();
-        util.log("---->" + TAG + "Sending open cell with router: " + currentCircuit[0]);
-
         // Update socket table
         socketTable[[currentCircuit[0][2], 1]] = socket;
 
@@ -304,13 +306,19 @@ function createCircuit(data) {
                 socketBuffer = socketBuffer.slice(512);
             }
         });
-        
+
+        // send open cell
+        console.log();
+        util.log("---->" + TAG + "Sending open cell with router: " + currentCircuit[0]);
 
         // Write the create cell, wait for the created event
         socket.write(command.createOpenCell(agentID, currentCircuit[0][2]), function() {
 
             // Opened event, send the create cell
             var openedCallback =  function() {
+                //clear timeout
+                clearTimeout(timers["openTimeout"]);
+
                 console.log();
                 util.log("---->" + TAG + "socket on opened was called, sending create cell");
                 socket.Opened = true;
@@ -319,20 +327,26 @@ function createCircuit(data) {
                 socket.write(command.createCreateCell(circuitNum), function() {
 
                     var createdCallback = function() {
+                        // cleartimeout
+                        clearTimeout(timers["createTimeout"]);
+
                         util.log(TAG + "socket on created was called, updating routingTable"); 
                         outgoingEdge = [socket._handle.fd, circuitNum];
                         routingTable[outgoingEdge] = null;
                         console.log(outgoingEdge + ":" + routingTable[outgoingEdge]);
+                        
                         console.log();
                         util.log("---->" + TAG + "Sending extend relay cell");
                         socket.Created = true;
                         socket.write(relay.createExtendCell(circuitNum, currentCircuit[1][0], currentCircuit[1][1], currentCircuit[1][2]), function() {
-
                             /*
                                 Once created, the source router will want to relay more extends to the existing connection
                                 so we keep state within the socket objects (and hope it works!!)
                             */
                             var extendedCallback = function() {
+                                // clear timeout
+                                clearTimeout(timers["extendTimeout"]);
+
                                 if (socket.hasOwnProperty("ExtendedCount")) {
                                     socket.ExtendedCount += 1;
                                 } else {
@@ -357,22 +371,27 @@ function createCircuit(data) {
 
                             socket.on('extended', extendedCallback);
 
+                            // set extend timeout
+                            timers["extendTimeout"] = setTimeout(function() {
+                                extendFailed(socket, openedCallback, createdCallback, extendedCallback);
+                            }, TIMEOUT_TIME);
+
                             socket.on('extendfailed', function() {
-                                util.log(TAG + "createfailed recieved, trying to establish another circuit");
-                                socket.removeListener('opened', openedCallback);
-                                socket.removeListener('created', createdCallback);
-                                createCircuit();
+                                extendFailed(socket, openedCallback, createdCallback, extendedCallback);
                             }); 
                         });
 
                         socket.removeListener('created', createdCallback);
                     };
+
                     socket.on('createfailed', function() {
-                        util.log(TAG + "createfailed recieved, trying to establish another circuit");
-                        socket.removeListener('opened', openedCallback);
-                        socket.removeListener('created', createdCallback);
-                        createCircuit();
+                        createFailed(socket, openedCallback, createdCallback);
                     });
+
+                    // set create timeout
+                    timers["createTimeout"] = setTimeout(function() {
+                        createFailed(socket, openedCallback, createdCallback);
+                    }, TIMEOUT_TIME);
 
                     socket.on('created', createdCallback);
                     
@@ -382,10 +401,12 @@ function createCircuit(data) {
             };
 
             socket.on('openfailed', function() {
-                util.log(TAG + "openfailed recieved, trying to establish another circuit");
-                socket.removeListener('opened', openedCallback);
-                createCircuit();
+                openFailed(socket, openedCallback);
             });
+
+            timers["openTimeout"] = setTimeout(function() {
+                openFailed(socket, openedCallback);
+            }, TIMEOUT_TIME);
 
             socket.on('opened', openedCallback);
             
@@ -455,3 +476,27 @@ function getTorRegistrations(queryName, callback) {
  
  }
 exports.createCircuit = createCircuit;
+
+
+ function openFailed(socket, openedCallback) {
+    console.log();
+    util.log(TAG + "openfailed recieved, trying to establish another circuit");
+    socket.removeListener('opened', openedCallback);
+    createCircuit();
+ }
+
+function createFailed(socket, openedCallback, createdCallback) {
+    console.log();
+    util.log(TAG + "createfailed recieved, trying to establish another circuit");
+    socket.removeListener('opened', openedCallback);
+    socket.removeListener('created', createdCallback);
+}
+
+function extendFailed(socket, openedCallback, createdCallback, extendedCallback) {
+    console.log();
+    util.log(TAG + "extendfailed recieved, trying to establish another circuit");
+    socket.removeListener('opened', openedCallback);
+    socket.removeListener('created', createdCallback);
+    socket.removeListener('extended', extendedCallback);
+    createCircuit();
+}

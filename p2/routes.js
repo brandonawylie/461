@@ -42,7 +42,6 @@ function commandCreated(obj, socket) {
 }
 
 function commandCreateFailed(obj) {
-    //TODO implement this
     socket.emit('createfailed');
 }
 
@@ -164,11 +163,13 @@ function relayData(obj, socket) {
         //printStreamTable(streamTable);
         var endSocket = streamTable[streamKey];
         if (endSocket != null) {
-            console.log();
-            util.log(TAG + "Writing data to... :" + endSocket._handle.fd);
-            endSocket.write(data, function() {
-                util.log(TAG + "Data written: ");
-            });
+            try {
+                console.log();
+                util.log(TAG + "Writing data to... :" + endSocket._handle.fd);
+                endSocket.write(data, function() {
+                    util.log(TAG + "Data written: ");
+                });
+            } catch(err){}
         }
     } else {
         // Send the data through the circuit
