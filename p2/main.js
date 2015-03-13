@@ -1,6 +1,4 @@
-// Logging
-// util.log(TAG + "TCP Server Bound to port " + PORT);
-
+// imports
 var net     = require('net');
 var http    = require('http');
 var url     = require('url');
@@ -9,8 +7,8 @@ var spawn   = require('child_process').spawn;
 var torutil = require('./torutil');
 var command = require('./command_cell');
 var relay   = require('./relay_cell');
-var TOR_PORT = 1338;
-// registations
+
+// registations to query, and store
 var torRegistrations = '';
 var routerAddress = "";
 var searchTorName = 'Tor61Router';
@@ -23,6 +21,7 @@ if (process.argv.length !== 5) {
 }
 
 // register ourself
+var TOR_PORT = 1338;
 var groupNum = parseInt(process.argv[2]);
 var instanceNum = parseInt(process.argv[3]);
 var BROSWER_PORT = parseInt(process.argv[4]);
@@ -32,6 +31,7 @@ var router_name = torName + "-" + groupNum + "-" + instanceNum;
 // TAG ourselves to log
 var TAG = agentID + ": main.js: ";
 
+// lookup our own address
 require('dns').lookup(require('os').hostname(), function (err, add, fam) {
   routerAddress = add;
 });
@@ -44,8 +44,10 @@ var startCircuitNum = null;
 routingTable  = {};
 socketTable   = {};
 streamTable   = {};
-// For debugging routing table (easier to print)
+
+// export our variables we want to use everywhere.
 module.exports = {};
+
 exports.routingTable = function() {
         return routingTable;
     };
@@ -57,6 +59,9 @@ exports.streamTable = function() {
     };
 exports.agentID = function() {
     return agentID;
+};
+exports.startCircuitID = function() {
+    return startCircuitNum;
 };
 
 var tor_server = net.createServer({allowHalfOpen: true}, function(incomingSocket) {
@@ -261,6 +266,10 @@ function createCircuit(data) {
 
         // Set initial socket
         startSocket = socket;
+
+        socket.on('end', function() {
+            torutil.lookupAndDestroy(socket);
+        });
 
         // Assigned arbitrary size
         var socketBuffer = new Buffer(0);
