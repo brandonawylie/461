@@ -42,7 +42,6 @@ function commandCreated(obj, socket) {
 }
 
 function commandCreateFailed(obj) {
-    //TODO implement this
     socket.emit('createfailed');
 }
 
