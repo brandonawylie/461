@@ -144,11 +144,13 @@ function relayData(obj, socket) {
         util.log(TAG + "Stream table key: " + streamKey);
         //printStreamTable(streamTable);
         var endSocket = streamTable[streamKey];
-        console.log();
-        util.log(TAG + "Writing data to... :" + endSocket._handle.fd);
-        endSocket.write(data, function() {
-            util.log(TAG + "Data written: ");
-        });
+        if (endSocket != null) {
+            console.log();
+            util.log(TAG + "Writing data to... :" + endSocket._handle.fd);
+            endSocket.write(data, function() {
+                util.log(TAG + "Data written: ");
+            });
+        }
     } else {
         // Send the data through the circuit
         util.log(TAG + "Sending data through router" + agentID);
