@@ -329,7 +329,15 @@ function createCircuit(data) {
                                     socket.removeListener('extended', extendedCallback);
                                 }
                             };
+
                             socket.on('extended', extendedCallback);
+
+                            socket.on('extendfailed', function() {
+                                util.log(TAG + "createfailed recieved, trying to establish another circuit");
+                                socket.removeListener('opened', openedCallback);
+                                socket.removeListener('created', createdCallback);
+                                createCircuit();
+                            }); 
                         });
 
                         socket.removeListener('created', createdCallback);
