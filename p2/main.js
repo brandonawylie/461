@@ -64,8 +64,14 @@ exports.startCircuitID = function() {
     return startCircuitNum;
 };
 
+
+
 var tor_server = net.createServer({allowHalfOpen: true}, function(incomingSocket) {
     util.log(TAG + "Received Incoming Socket from tor router " + incomingSocket.remoteAddress + ":" + incomingSocket.remotePort);
+
+    incomingSocket.on('error', function(err) {
+        util.log(TAG + "something went wrong " + err);
+    });
 
     // Assigned arbitrary size
     var socketBuffer = new Buffer(0);
@@ -94,6 +100,10 @@ var tor_server = net.createServer({allowHalfOpen: true}, function(incomingSocket
 
 // Proxy
 var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSocket) {
+    incomingSocket.on('error', function(err) {
+        util.log(TAG + "something went wrong " + err);
+    });
+
     util.log(TAG + "Received Incoming Socket from browser " + incomingSocket.remoteAddress + ":" + incomingSocket.remotePort);
     var isTunnel = false;
 
@@ -267,8 +277,14 @@ function createCircuit(data) {
         // Set initial socket
         startSocket = socket;
 
+        // if we recv end & we are src router then recreate circuit
         socket.on('end', function() {
             torutil.lookupAndDestroy(socket);
+            createCircuit();
+        });
+
+        socket.on('error', function(err) {
+            util.log(TAG + " something happened: " + err);
         });
 
         // Assigned arbitrary size
@@ -438,3 +454,4 @@ function getTorRegistrations(queryName, callback) {
     });
  
  }
+exports.createCircuit = createCircuit;

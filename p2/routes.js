@@ -46,8 +46,17 @@ function commandCreateFailed(obj) {
     socket.emit('createfailed');
 }
 
-function commandDestroy(obj) {
+function commandDestroy(obj, socket) {
     //TODO implement this
+    var key = [socket._handle.fd, obj.CircuitID];
+    var startCircuitID = globals.startCircuitID();
+    if (startCircuitID === obj.CircuitID) {
+        util.log(TAG + " at source, a router failed, trying to rebuild");
+        globals.createCircuit();
+    } else {
+        util.log(TAG + " not at source, a router failed, passing it along");
+        torutil.lookupAndDestroyByCircuitID(obj.CircuitID);
+    }
 }
 
 function commandOpen(obj, socket) {
@@ -63,6 +72,10 @@ function commandOpen(obj, socket) {
 
     console.log();
     util.log("<----" + TAG + "Open was a success, sending opened back to agent id: " + obj.AgentIDBegin);
+
+    socketTable[[obj.AgentIDBegin, 0]].on('error', function(err) {
+        util.log(TAG + " something went wrong " + err);
+    });
 
     socketTable[[obj.AgentIDBegin, 0]].write(command.createOpenedCell(obj.AgentIDBegin, obj.AgentIDEnd), function() {
         util.log(TAG + "Sending opened successful");
@@ -93,6 +106,10 @@ function relayBegin(obj, socket, host, port) {
         util.log(TAG + "Mapping " + streamKey + " to server socket");
         streamTable[streamKey] = new net.Socket({allowHalfOpen: true});
         streamTable[streamKey].connect(parseInt(port), host,  function() {
+
+            streamTable[streamKey].on('error', function(err) {
+                util.log(TAG + " something happned " + err);
+            });
             
             util.log(TAG + "successful setup of begin socket to server");
             streamTable[streamKey].on('data', function(data) {
@@ -237,6 +254,10 @@ function relayExtend(obj, socket) {
             // Get odd circuit number because we are opening a socket
             extendCircuitNum = getRandomCircuitNumberOdd;
             extendSocket = net.connect(extendPort, extendIP, function() {
+                extendSocket.on('error', function(err) {
+                    util.log(TAG + 'something went wrong ' + err);
+                });
+
                 util.log(TAG + "Extend socket created successfully, adding to socket table");
                 // Add socket to socket table
                 socketTable[[extendAgentID, 1]] = extendSocket;
