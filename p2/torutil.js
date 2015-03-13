@@ -193,6 +193,38 @@ function getRequestString(top, args) {
     return retVal;
 }
 
+
+/*
+    We recieved an end on a socket. Lookup all circuits associated with that socket, 
+    and send out a destroy/end message, and remove it form the table.
+*/
+function lookupAndDestroy(socket) {
+    var routingTable = globals.routingTable();
+
+    var destroyCB = function() {
+        util.log(TAG + "Sent end with a destroy cell from circuit no: " + key[1] + ", to circuit no: " + routingTable[key][1]);
+    };
+
+
+    for (var key in routingTable) {
+        if (routingTable.hasOwnProperty(key)) {
+            var key_socket_fd = key[0];
+            if(socket._handle.fd === key_socket_fd) {
+                var out = routingTable[key];
+                var outSock = routingTable[key][0];
+                outSock.end(relay.createDestroyCell(routingTable[key][1]), destroyCB);
+                var key_a = key;
+                var key_b = [outSock._handle.fd, out[1]];
+
+                delete routingTable[key_a];
+                if (routingTable[key_b]) {
+                    delete routingTable[key_b];
+                }
+            }
+        }
+    }
+}
+
 module.exports = {
     parseRegistrations: parseRegistrations,
     isCommandCell: isCommandCell,
@@ -204,5 +236,6 @@ module.exports = {
     unpackRelay: unpackRelay,
     getUniqueStreamNumber: getUniqueStreamNumber,
     parseArgs: parseArgs,
-    getRequestString: getRequestString
+    getRequestString: getRequestString,
+    lookupAndDestroy: lookupAndDestroy
 };
