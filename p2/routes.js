@@ -476,8 +476,9 @@ function relayExtendFailed(obj, socket) {
     var socketTable = globals.socketTable();
     var agentID = globals.agentID();
 
-    var entry = routingTable[[socket, obj.CircuitID]];
+    var entry = routingTable[[socket._handle.fd, obj.CircuitID]];
 
+    if (entry == null) return;
     entry[0].write(relay.createExtendFailedCell(entry[1]), function() {
         util.log(TAG + "RelayExtended sent successfully");
     });
@@ -558,10 +559,10 @@ function getOddOrEvenCircuit(socketTable, extendAgentID, currSocket) {
     var outSocket = socketTable[[agentID, 1]];
     var inSocket = socketTable[[agentID, 0]];
 
-    if(outSocket !== null && outSocket._handle.fd !== currSocket._handle.fd) {
+    if(outSocket != null && outSocket._handle.fd != currSocket._handle.fd) {
         // Contains socket that was created outgoing --> Create odd
         return getRandomCircuitNumberOdd();
-    } else if (inSocket !== null && inSocket._handle.fd !== currSocket._handle.fd) {
+    } else if (inSocket != null && inSocket._handle.fd != currSocket._handle.fd) {
         // Contains socket that was created incoming
         return getRandomCircuitNumberEven();
     } else {
