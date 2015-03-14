@@ -255,10 +255,17 @@ function relayExtend(obj, socket) {
 
             // Get odd circuit number because we are opening a socket
             extendCircuitNum = getRandomCircuitNumberOdd;
-            extendSocket = net.connect(extendPort, extendIP, function() {
-                extendSocket.on('error', function(err) {
-                    util.log(TAG + 'something went wrong ' + err);
+            extendSocket = new net.Socket({allowHalfOpen: true});
+            
+            extendSocket.on('error', function(err) {
+                util.log("Extension to socket failed with error: " + err);
+                util.log("Returning extended failed");
+                socket.write(relay.createExtendFailedCell(obj.CircuitID), function() {
+                    util.log(TAG + "create failed in a middle router, sending extend failed back");
                 });
+            });
+
+            extendSocket.connect(extendPort, extendIP, function() {
 
                 util.log(TAG + "Extend socket created successfully, adding to socket table");
                 // Add socket to socket table
@@ -462,8 +469,9 @@ function relayBeginFailed() {
     //TODO implement this
 }
 
-function relayExtendFailed() {
-    //TODO implement this
+function relayExtendFailed(obj, socket) {
+    console.log("Object:");
+    console.log(obj);
     var routingTable = globals.routingTable();
     var socketTable = globals.socketTable();
     var agentID = globals.agentID();

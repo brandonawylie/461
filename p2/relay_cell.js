@@ -104,7 +104,7 @@ function createBeginFailed(circ_id, stream_id) {
     return fillZeros(buf, 14);
 }
 
-function createExtendFailed(circ_id) {
+function createExtendFailedCell(circ_id) {
     // Failure response to extending a circuit
     var buf = createBasicRelay(circ_id, 0x0000);
     var body_length = 0;
@@ -212,7 +212,7 @@ module.exports = {
     createExtendCell: createExtendCell,
     createExtendedCell: createExtendedCell,
     createBeginFailed: createBeginFailed,
-    createExtendFailed: createExtendFailed,
+    createExtendFailedCell: createExtendFailedCell,
     parseRelayExtendBody: parseRelayExtendBody,
     packAndSendData: packAndSendData,
     parseRelayDataBody: parseRelayDataBody,
