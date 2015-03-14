@@ -13,7 +13,7 @@ var TIMEOUT_TIME = 4000;
 // registations to query, and store
 var torRegistrations = '';
 var routerAddress = "";
-var searchTorName = 'Tor61Router';
+var searchTorName = 'Tor61Router-5316';
 
 // ./run <group number> <instance number> <HTTP Proxy port>
 if (process.argv.length !== 5) {
@@ -218,10 +218,19 @@ getTorRegistrations(searchTorName, function(data) {
     torRegistrations = torutil.parseRegistrations(data);
 
 
-    tor_server.listen(TOR_PORT, function() {
+    
+    tor_server.on('listening', function() {
+        TOR_PORT = tor_server.address().port;
         registerRouter(TOR_PORT);
         createCircuit(data);
     });
+    tor_server.on( 'error', function(err) {
+        if ( err.code == "EADDRINUSE") {
+            tor_server.listen(0);
+        }
+
+    });
+    tor_server.listen(TOR_PORT);
 });
 /*========================
 TOR SERVER STARTS UP HERE
