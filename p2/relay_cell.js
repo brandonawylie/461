@@ -53,8 +53,6 @@ function createDataCell(circ_id, stream_id, data) {
 }
 
 function createEndCell(circ_id, stream_id) {
-    console.log();
-    console.log("Creating end cell w/ circuitNum: " + circ_id + " & " + stream_id);
     // Request to close a stream
     var buf = createBasicRelay(circ_id, stream_id);
     var body_length = 0;
@@ -153,7 +151,6 @@ function parseRelayDataBody(body) {
 
 function packAndSendData(buf, streamNum, circuitNum, socket) {
     if (socket === null) {
-        util.log(TAG + "SOMETHING WENT HORRIBLY WRONG, unable to locate socket for packing data");
         return;
     }
     var data;
@@ -177,21 +174,16 @@ function packAndSendData(buf, streamNum, circuitNum, socket) {
         cells.push(cell);
     }
 
-    util.log(TAG + "packed a total of " + cells.length + " cells from request");
 
     for (var i = 0; i < cells.length; i++) {
         // TODO find stream
-        console.log();
-        util.log("---->" + TAG + "Packed and sending on circuit: " + circuitNum);
         socket.write(cells[i]);
     }
 
-    util.log(TAG + "wrote all " + cells.length + " from source on circuit: " + circuitNum);
 }
 
 function getSocketByCircuitNumber(circuitNum) {
     var routingTable = globals.routingTable();
-    console.log("LOOKING UP STUFF WITH CIRCUIT NUM: " + circuitNum);
     //console.log(routingTable);
     for (var key in routingTable) {
         if (routingTable.hasOwnProperty(key)) {

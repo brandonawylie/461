@@ -70,16 +70,13 @@ exports.startCircuitID = function() {
 
 
 var tor_server = net.createServer({allowHalfOpen: true}, function(incomingSocket) {
-    util.log(TAG + "Received Incoming Socket from tor router " + incomingSocket.remoteAddress + ":" + incomingSocket.remotePort);
 
     incomingSocket.on('error', function(err) {
-        util.log(TAG + "something went wrong " + err);
     });
 
     // Assigned arbitrary size
     var socketBuffer = new Buffer(0);
     incomingSocket.on('data', function(data) {
-        util.log(TAG + "Received cell from tor router "+ incomingSocket.remoteAddress + ":" + incomingSocket.remotePort);
         incomingSocket.id = 927;
         socketBuffer = Buffer.concat([socketBuffer, data]);
         var buf;
@@ -96,7 +93,6 @@ var tor_server = net.createServer({allowHalfOpen: true}, function(incomingSocket
 
     // This shouldn't happen
     incomingSocket.on('end', function(data) {
-        util.log(TAG + "Recieved end from host");
         torutil.removeSocketFromTable(incomingSocket);
     });
 });
@@ -104,21 +100,13 @@ var tor_server = net.createServer({allowHalfOpen: true}, function(incomingSocket
 // Proxy
 var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSocket) {
     incomingSocket.on('error', function(err) {
-        util.log(TAG + "something went wrong " + err);
     });
 
-    util.log(TAG + "Received Incoming Socket from browser " + incomingSocket.remoteAddress + ":" + incomingSocket.remotePort);
     var isTunnel = false;
 
     //var browserBuffer = new Buffer(0);
     var streamNumber = torutil.getUniqueStreamNumber(streamTable, startSocket._handle.fd, startCircuitNum);;
     incomingSocket.on('data', function(data) {
-
-        console.log();
-        util.log(TAG + " RECEIVED data from browser");
-        console.log("Browser socket: " + incomingSocket._handle.fd);
-        console.log("Start socket: " + startSocket._handle.fd);
-        console.log();
 
         // From last proxy project, & modifed
         // Tunnel data through tor, simply as data buffer
@@ -156,7 +144,6 @@ var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSo
 
         // Map the stream correctly to the browser
         var streamKey = [startSocket._handle.fd, startCircuitNum, streamNumber];
-        util.log(TAG + "Mapping " + streamKey + " to browser socket");
         streamTable[streamKey] = incomingSocket;
 
         // open a TCP socket to them
@@ -177,14 +164,10 @@ var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSo
             
             startSocket.write(beginCell, function() {
                 var connectedListener = function() {
-                    util.log(TAG + "Connected complete for tunnel stream");
-                    console.log();
                     
                     // Write a 200 OK to the browser, so that it will start
                     // sending the data
-                    util.log("----> " + TAG + "Sending 200 OK to browser...");
                     incomingSocket.write("HTTP/1.1 200 OK\r\n\r\n", function() {
-                        util.log("Sent a 200 OK to browser socket, ready to take data");
                     });
 
                     startSocket.removeListener('connected', connectedListener);
@@ -200,20 +183,13 @@ var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSo
             sendStuff = torutil.getRequestString(req_line, req_args);
             port = req_url.port;
             host = req_url.hostname;
-            console.log();
-            util.log(TAG + "Host requested: " + host + ":" + port + ", assigned streamNumber=" + streamNumber);
-            console.log();
                 
             var dataString = sendStuff + '\r\n\r\n';
             var cleanedData = new Buffer(dataString.length);
             cleanedData.write(dataString);
-            util.log("----> " + TAG + "Sending begin cell...");
             var beginCell = relay.createBeginCell(startCircuitNum, streamNumber, host, port);
             startSocket.write(beginCell, function() {
                 var connectedListener = function() {
-                    util.log(TAG + "Connected complete for stream");
-                    console.log();
-                    util.log("----> " + TAG + "Sending data...");
                     relay.packAndSendData(cleanedData, streamNumber, startCircuitNum, startSocket);
                     startSocket.removeListener('connected', connectedListener);
                 };
@@ -224,7 +200,6 @@ var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSo
     });
 
     incomingSocket.on('end', function() {
-        util.log(TAG + "recv'd end from browser");
         startSocket.write(relay.createEndCell(startCircuitNum, streamNumber));
     });
 }).listen(BROSWER_PORT);
@@ -242,10 +217,8 @@ getTorRegistrations(searchTorName, function(data) {
 
     torRegistrations = torutil.parseRegistrations(data);
 
-    util.log(TAG + "Registrations recieved: \n" + data);
 
     tor_server.listen(TOR_PORT, function() {
-        util.log(TAG + "TCP Server Bound to port " + TOR_PORT);
         registerRouter(TOR_PORT);
         createCircuit(data);
     });
@@ -255,11 +228,10 @@ TOR SERVER STARTS UP HERE
 ========================*/
 
 function createCircuit(data) {
-    util.log(TAG + "Creating circuit...");
+    console.log();
+    util.log(TAG + "Start Creating circuit...");
     var currentIndex = Math.floor(Math.random() * torRegistrations.length);
     var currentNode = torRegistrations[currentIndex];
-
-    util.log(TAG + "Chose 4 random routers with ip addresses");
 
     // Add ourselves to tor registrations
     torRegistrations.push(['127.0.0.1', TOR_PORT, agentID]);
@@ -268,8 +240,6 @@ function createCircuit(data) {
     startCircuitNum = circuitNum;
     // send to cell 1
     
-    util.log(TAG + "Connecting to first router...");
-
     timers["connectTimeout"] = setTimeout(function() {
         // Remove bad node from the index
         connectFailed(currentIndex, socket);
@@ -278,14 +248,11 @@ function createCircuit(data) {
     socket = new net.Socket({allowHalfOpen: true});
 
     socket.on('error', function(err) {
-        util.log("Something went wrong, error: " + err);
     });
 
     socket.connect(currentNode[1], currentNode[0], function() {
         clearTimeout(timers["connectTimeout"]);
 
-        util.log(TAG + "Successfully created connection from " + 
-                 agentID + " to " + currentNode[0] + ":" + currentNode[1] + ", " + currentNode[2]);
         // Update socket table
         socketTable[[currentNode[2], 1]] = socket;
 
@@ -318,10 +285,6 @@ function createCircuit(data) {
             }
         });
 
-        // send open cell
-        console.log();
-        util.log("---->" + TAG + "Sending open cell with router: " + currentNode);
-
         // Write the create cell, wait for the created event
         socket.write(command.createOpenCell(agentID, currentNode[2]), function() {
 
@@ -330,13 +293,11 @@ function createCircuit(data) {
                 //clear timeout
                 clearTimeout(timers["openTimeout"]);
 
-                console.log();
-                util.log("---->" + TAG + "socket on opened was called, sending create cell");
                 socket.Opened = true;
-
+                
                 // Write the create cell, and wait for the created event
                 socket.write(command.createCreateCell(circuitNum), function() {
-
+                    util.log("--> Create Sent to agent: " + currentNode[2]);
                     var createdCallback = function() {
                         // clear timeout
                         clearTimeout(timers["createTimeout"]);
@@ -344,15 +305,13 @@ function createCircuit(data) {
                         // Get next node to connect to 
                         currentIndex = Math.floor(Math.random() * torRegistrations.length);
                         currentNode = torRegistrations[currentIndex];
-                        util.log(TAG + "socket on created was called, updating routingTable"); 
                         outgoingEdge = [socket._handle.fd, circuitNum];
                         routingTable[outgoingEdge] = null;
-                        console.log(outgoingEdge + ":" + routingTable[outgoingEdge]);
                         
-                        console.log();
-                        util.log("---->" + TAG + "Sending extend relay cell");
+                        
                         socket.Created = true;
                         socket.write(relay.createExtendCell(circuitNum, currentNode[0], currentNode[1], currentNode[2]), function() {
+                            util.log("--> Extend Sent to agent: " + currentNode[2]);
                             /*
                                 Once created, the source router will want to relay more extends to the existing connection
                                 so we keep state within the socket objects (and hope it works!!)
@@ -366,22 +325,17 @@ function createCircuit(data) {
                                 } else {
                                     socket.ExtendedCount = 1;
                                 }
-                                util.log(TAG + "Extended count is now: " + socket.ExtendedCount);
-                                
+                                util.log("--| Extended Recv'd from agent: " + currentNode[2]);
                                 if (socket.ExtendedCount < 2) {
                                     // Get next node to connect to 
                                     currentIndex = Math.floor(Math.random() * torRegistrations.length);
                                     currentNode = torRegistrations[currentIndex];
-                                    console.log();
-                                    util.log("---->" + TAG + "Sending relay extend cell to next hop...");
                                     var extendCell = relay.createExtendCell(circuitNum, currentNode[0], currentNode[1], currentNode[2]);
                                     socket.write(extendCell, function() {
-                                        util.log(TAG + "Relay extend cell sent successfully");
+                                        util.log("--> Extend Sent to agent: " + currentNode[2]);
                                     });
                                 } else {
-                                    console.log();
-                                    util.log("Circuit has been completed for router: " + agentID);
-                                    console.log();
+                                    util.log("--| Circuit Complete with id: " + startCircuitNum);
                                     socket.removeListener('extended', extendedCallback);
                                 }
                             };
@@ -439,9 +393,7 @@ function createCircuit(data) {
 function registerRouter(port) {
 
     // Currently has dummy registration info
-    console.log();
     util.log("Registering as " + router_name);
-    console.log();
     var regClient = spawn('python', ['./registration_client.py', port, router_name, agentID]);
 
     util.log(TAG + "registering: in progress");
@@ -491,23 +443,20 @@ function getTorRegistrations(queryName, callback) {
 exports.createCircuit = createCircuit;
 
 function connectFailed(currentIndex, socket) {
-    console.log();
-    util.log(TAG + "Connect timed out, trying to establish another circuit");
+    util.log("--x connect failed to agent: " + torRegistrations[currentIndex][2]);
     torRegistrations.splice(currentIndex, 1);
     createCircuit();
 }
 
  function openFailed(currentIndex, socket, openedCallback) {
-    console.log();
-    util.log(TAG + "openfailed recieved, trying to establish another circuit");
+    util.log("--x open failed to agent: " + torRegistrations[currentIndex][2]);
     torRegistrations.splice(currentIndex, 1);
     socket.removeListener('opened', openedCallback);
     createCircuit();
  }
 
 function createFailed(currentIndex, socket, openedCallback, createdCallback) {
-    console.log();
-    util.log(TAG + "createfailed recieved, trying to establish another circuit");
+    util.log("--x create failed to agent: " + torRegistrations[currentIndex][2]);
     torRegistrations.splice(currentIndex, 1);
     socket.removeListener('opened', openedCallback);
     socket.removeListener('created', createdCallback);
@@ -515,8 +464,7 @@ function createFailed(currentIndex, socket, openedCallback, createdCallback) {
 }
 
 function extendFailed(currentIndex, socket, openedCallback, createdCallback, extendedCallback) {
-    console.log();
-    util.log(TAG + "extendfailed recieved, trying to establish another circuit");
+    util.log("--x extend failed to agent: " + torRegistrations[currentIndex][2]);
     torRegistrations.splice(currentIndex, 1);
     socket.removeListener('opened', openedCallback);
     socket.removeListener('created', createdCallback);

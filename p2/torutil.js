@@ -69,7 +69,6 @@ function unpackCommand(pkt, socket) {
     };
     pobj.CircuitID =   pkt.readUInt16BE(0);
     pobj.CommandType = pkt.readUInt8(2);
-    util.log(TAG + "unpacking command cell from circ #: " + pobj.CircuitID + ", of command: " + pobj.CommandType);
     switch(pobj.CommandType) {
         case 1:
             routes.commandCreate(pobj, socket);
@@ -121,7 +120,6 @@ function unpackRelay(pkt, obj, socket) {
     obj.BodyLength = pkt.readUInt16BE(11);
     obj.Relay.Command = pkt.readUInt8(13);
     obj.Relay.Body = pkt.toString('utf8', 14, 14 + obj.BodyLength);
-    util.log(TAG + "unpacking relay, cmd: " + obj.Relay.Command);
     switch(obj.Relay.Command) {
         case 1:
             console.log(obj.Relay.Body);
@@ -202,9 +200,9 @@ function lookupAndDestroyBySocket(socket) {
     var routingTable = globals.routingTable();
 
     var destroyCB = function(key) {
-        util.log(TAG + "Sent end with a destroy cell from circuit no: " + key[1] + ", to circuit no: " + routingTable[key][1]);
+        util.log("--> Sent Destroy on circuit: " + key[1]);
     };
-
+    if (!socket) return;
 
     for (var key in routingTable) {
         if (routingTable.hasOwnProperty(key)) {
@@ -229,7 +227,7 @@ function lookupAndDestroyByCircuitID(id) {
     var routingTable = globals.routingTable();
 
     var destroyCB = function(key) {
-        util.log(TAG + "Sent end with a destroy cell from circuit no: " + key[1] + ", to circuit no: " + routingTable[key][1]);
+        util.log("--> Sent Destroy on circuit: " + key[1]);
     };
 
 

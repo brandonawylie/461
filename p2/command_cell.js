@@ -55,7 +55,6 @@ function createOpenFailedCell(circ_id, opener_id, opened_id) {
 
 function createCreateCell(circ_id) {
     var buf = new Buffer(SIZE);
-    util.log("circ_id: " + circ_id);
     buf.writeUInt16BE(circ_id, 0);
     buf.writeUInt8(CREATE, 2);
     // Fill buffer with 0's
