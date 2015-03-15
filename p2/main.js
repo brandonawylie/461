@@ -13,7 +13,7 @@ var TIMEOUT_TIME = 4000;
 // registations to query, and store
 var torRegistrations = '';
 var routerAddress = "";
-var searchTorName = 'Tor61Router-5316';
+var searchTorName = 'Tor61Router';
 
 // ./run <group number> <instance number> <HTTP Proxy port>
 if (process.argv.length !== 5) {
@@ -69,6 +69,7 @@ exports.startCircuitID = function() {
 
 
 
+// This is the listening socket for other tor routers
 var tor_server = net.createServer({allowHalfOpen: true}, function(incomingSocket) {
 
     incomingSocket.on('error', function(err) {
@@ -97,14 +98,13 @@ var tor_server = net.createServer({allowHalfOpen: true}, function(incomingSocket
     });
 });
 
-// Proxy
+// Proxy -- Listens from the browser directed at it
 var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSocket) {
     incomingSocket.on('error', function(err) {
     });
 
     var isTunnel = false;
 
-    //var browserBuffer = new Buffer(0);
     var streamNumber = torutil.getUniqueStreamNumber(streamTable, startSocket._handle.fd, startCircuitNum);;
     incomingSocket.on('data', function(data) {
 
@@ -145,7 +145,7 @@ var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSo
         // Map the stream correctly to the browser
         var streamKey = [startSocket._handle.fd, startCircuitNum, streamNumber];
         streamTable[streamKey] = incomingSocket;
-
+        console.log()
         // open a TCP socket to them
         if (req_line[0] === "CONNECT") {
             // CASE 1: Browser is tunneling
@@ -164,15 +164,21 @@ var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSo
             
             startSocket.write(beginCell, function() {
                 var connectedListener = function() {
-                    
                     // Write a 200 OK to the browser, so that it will start
                     // sending the data
                     incomingSocket.write("HTTP/1.1 200 OK\r\n\r\n", function() {
                     });
 
-                    startSocket.removeListener('connected', connectedListener);
+                    incomingSocket.removeListener('connected', connectedListener);
+                    incomingSocket.removeListener('beginfailed', function() {
+                        util.log(TAG + "failed to connect to server-" + host + ":" + port);
+                    });
                 };
-                startSocket.on('connected', connectedListener);
+                incomingSocket.on('connected', connectedListener);
+
+                incomingSocket.on('beginfailed', function() {
+                    util.log(TAG + "failed to connect to server-" + host + ":" + port);
+                });
             });
 
         } else {
@@ -191,10 +197,17 @@ var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSo
             startSocket.write(beginCell, function() {
                 var connectedListener = function() {
                     relay.packAndSendData(cleanedData, streamNumber, startCircuitNum, startSocket);
-                    startSocket.removeListener('connected', connectedListener);
+                    incomingSocket.removeListener('connected', connectedListener);
+                    incomingSocket.removeListener('beginfailed', function() {
+                        util.log(TAG + "failed to connect to server-" + host + ":" + port);
+                    });
                 };
 
-                startSocket.on('connected', connectedListener);
+                incomingSocket.on('connected', connectedListener);
+
+                incomingSocket.on('beginfailed', function() {
+                    util.log(TAG + "failed to connect to server-" + host + ":" + port);
+                });
             });
         }
     });
@@ -209,14 +222,11 @@ var browser_server = net.createServer({allowHalfOpen: true}, function(incomingSo
 TOR SERVER STARTS UP HERE
 ========================*/
 getTorRegistrations(searchTorName, function(data) {
+    torRegistrations = torutil.parseRegistrations(data);
     if (data.length === 0) {
         // Exit, we found nothing
-        util.log("No tor nodes found on the registration, exiting...");
-        process.exit(0);
+        util.log("No tor nodes found on the registration...");
     }
-
-    torRegistrations = torutil.parseRegistrations(data);
-
 
     
     tor_server.on('listening', function() {
@@ -239,11 +249,10 @@ TOR SERVER STARTS UP HERE
 function createCircuit(data) {
     console.log();
     util.log(TAG + "Start Creating circuit...");
-    var currentIndex = Math.floor(Math.random() * torRegistrations.length);
-    var currentNode = torRegistrations[currentIndex];
-
     // Add ourselves to tor registrations
     torRegistrations.push(['127.0.0.1', TOR_PORT, agentID]);
+    var currentIndex = Math.floor(Math.random() * torRegistrations.length);
+    var currentNode = torRegistrations[currentIndex];
 
     var circuitNum = torutil.getRandomCircuitNumberOdd();
     startCircuitNum = circuitNum;
@@ -300,7 +309,6 @@ function createCircuit(data) {
             // Opened event, send the create cell
             var openedCallback =  function() {
                 //clear timeout
-                clearTimeout(timers["openTimeout"]);
 
                 socket.Opened = true;
                 
@@ -308,15 +316,12 @@ function createCircuit(data) {
                 socket.write(command.createCreateCell(circuitNum), function() {
                     util.log("--> Create Sent to agent: " + currentNode[2]);
                     var createdCallback = function() {
-                        // clear timeout
-                        clearTimeout(timers["createTimeout"]);
 
                         // Get next node to connect to 
                         currentIndex = Math.floor(Math.random() * torRegistrations.length);
                         currentNode = torRegistrations[currentIndex];
                         outgoingEdge = [socket._handle.fd, circuitNum];
                         routingTable[outgoingEdge] = null;
-                        
                         
                         socket.Created = true;
                         socket.write(relay.createExtendCell(circuitNum, currentNode[0], currentNode[1], currentNode[2]), function() {
@@ -336,33 +341,45 @@ function createCircuit(data) {
                                 }
                                 util.log("--| Extended Recv'd from agent: " + currentNode[2]);
                                 if (socket.ExtendedCount < 2) {
-                                    // Get next node to connect to 
+                                    // Get next node to connect to, and send an extend
                                     currentIndex = Math.floor(Math.random() * torRegistrations.length);
                                     currentNode = torRegistrations[currentIndex];
                                     var extendCell = relay.createExtendCell(circuitNum, currentNode[0], currentNode[1], currentNode[2]);
                                     socket.write(extendCell, function() {
+                                        // set a new extend timeout
+                                        timers["extendTimeout"] = setTimeout(function() {
+                                            extendFailed(currentIndex, socket, openedCallback, createdCallback, extendedCallback);
+                                        }, TIMEOUT_TIME);
+
                                         util.log("--> Extend Sent to agent: " + currentNode[2]);
                                     });
                                 } else {
                                     util.log("--| Circuit Complete with id: " + startCircuitNum);
                                     socket.removeListener('extended', extendedCallback);
+                                    socket.removeListener('extendFailed',function() {
+                                        extendFailed(currentIndex, socket, openedCallback, createdCallback, extendedCallback);
+                                    });
+                                    clearTimeout(timers["extendTimeout"]);
                                 }
                             };
-
                             // set extend timeout
                             timers["extendTimeout"] = setTimeout(function() {
                                 extendFailed(currentIndex, socket, openedCallback, createdCallback, extendedCallback);
                             }, TIMEOUT_TIME);
 
                             socket.on('extendfailed', function() {
-                                clearTimeout(timers["extendTimeout"]);
                                 extendFailed(currentIndex, socket, openedCallback, createdCallback, extendedCallback);
                             }); 
 
                             socket.on('extended', extendedCallback);
                         });
 
+                        // clear timeout
+                        clearTimeout(timers["createTimeout"]);
                         socket.removeListener('created', createdCallback);
+                        socket.removeListener('createFailed', function() {
+                            createFailed(currentIndex, socket, openedCallback, createdCallback);
+                        });
                     };
 
                     // set create timeout
@@ -371,7 +388,6 @@ function createCircuit(data) {
                     }, TIMEOUT_TIME);
                     
                     socket.on('createfailed', function() {
-                        clearTimeout(timers["createTimeout"]);
                         createFailed(currentIndex, socket, openedCallback, createdCallback);
                     });
 
@@ -379,7 +395,11 @@ function createCircuit(data) {
                     
                 });
 
+                clearTimeout(timers["openTimeout"]);
                 socket.removeListener('opened', openedCallback);
+                socket.removeListener('openFailed', function() {
+                    openFailed(currentIndex, socket, openedCallback);
+                });
             };
 
             timers["openTimeout"] = setTimeout(function() {
@@ -387,7 +407,6 @@ function createCircuit(data) {
             }, TIMEOUT_TIME);
 
             socket.on('openfailed', function() {
-                clearTimeout(timers["openTimeout"]);
                 openFailed(currentIndex, socket, openedCallback);
             });
 
@@ -454,29 +473,40 @@ exports.createCircuit = createCircuit;
 function connectFailed(currentIndex, socket) {
     util.log("--x connect failed to agent: " + torRegistrations[currentIndex][2]);
     torRegistrations.splice(currentIndex, 1);
+    socket.end();
     createCircuit();
 }
 
  function openFailed(currentIndex, socket, openedCallback) {
     util.log("--x open failed to agent: " + torRegistrations[currentIndex][2]);
     torRegistrations.splice(currentIndex, 1);
+    clearTimeout(timers["openTimeout"]);
     socket.removeListener('opened', openedCallback);
+    socket.end();
     createCircuit();
  }
 
 function createFailed(currentIndex, socket, openedCallback, createdCallback) {
     util.log("--x create failed to agent: " + torRegistrations[currentIndex][2]);
     torRegistrations.splice(currentIndex, 1);
+    clearTimeout(timers["openTimeout"]);
     socket.removeListener('opened', openedCallback);
+    clearTimeout(timers["createTimeout"]);
     socket.removeListener('created', createdCallback);
+    socket.end();
     createCircuit();
 }
 
 function extendFailed(currentIndex, socket, openedCallback, createdCallback, extendedCallback) {
     util.log("--x extend failed to agent: " + torRegistrations[currentIndex][2]);
     torRegistrations.splice(currentIndex, 1);
+    clearTimeout(timers["openTimeout"]);
     socket.removeListener('opened', openedCallback);
+    clearTimeout(timers["createTimeout"]);
     socket.removeListener('created', createdCallback);
+    clearTimeout(timers["extendTimeout"]);
     socket.removeListener('extended', extendedCallback);
+    socket.ExtendedCount = 1;
+    socket.end();
     createCircuit();
 }

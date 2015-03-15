@@ -38,8 +38,9 @@ function getRandomCircuitNumberOdd() {
 }
 
 function removeSocketFromTable(sock) {
+    socketTable = globals.socketTable();
     for (var key in socketTable) {
-        if (p.hasOwnProperty(key)) {
+        if (socketTable.hasOwnProperty(key)) {
             if (socketTable[key] === sock) {
                 socketTable[key].end();
                 delete socketTable[key];
@@ -223,35 +224,6 @@ function lookupAndDestroyBySocket(socket) {
     }
 }
 
-function lookupAndDestroyByCircuitID(id) {
-    var routingTable = globals.routingTable();
-
-    var destroyCB = function(key) {
-        util.log("--> Sent Destroy on circuit: " + key[1]);
-    };
-
-
-    for (var key in routingTable) {
-        if (routingTable.hasOwnProperty(key)) {
-            var cid = key[1];
-            if(cid === id) {
-                var out = routingTable[key];
-                var outSock = out[0];
-                outSock.write(relay.createDestroyCell(routingTable[key][1]), destroyCB(key));
-                var key_a = key;
-                var key_b = [outSock._handle.fd, out[1]];
-
-                delete routingTable[key_a];
-                if (routingTable[key_b]) {
-                    delete routingTable[key_b];
-                }
-            }
-        }
-    }
-}
-
-
-
 module.exports = {
     parseRegistrations: parseRegistrations,
     isCommandCell: isCommandCell,
@@ -264,6 +236,5 @@ module.exports = {
     getUniqueStreamNumber: getUniqueStreamNumber,
     parseArgs: parseArgs,
     getRequestString: getRequestString,
-    lookupAndDestroyBySocket: lookupAndDestroyBySocket,
-    lookupAndDestroyByCircuitID: lookupAndDestroyByCircuitID
+    lookupAndDestroyBySocket: lookupAndDestroyBySocket
 };

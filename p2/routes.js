@@ -18,7 +18,6 @@ function commandCreate(obj, socket) {
 
     if (routingTable.outgoingEdge == null) {
         routingTable[outgoingEdge] = null;
-        printRoutingTable(routingTable);
     }
 
     util.log("--| Create recieved on circuit: " + obj.CircuitID);
@@ -49,7 +48,7 @@ function commandDestroy(obj, socket) {
     if (startCircuitID === obj.CircuitID) {
         globals.createCircuit();
     } else {
-        torutil.lookupAndDestroyByCircuitID(obj.CircuitID);
+        lookupAndDestroyByCircuitID(obj.CircuitID);
     }
 }
 
@@ -91,11 +90,11 @@ function relayBegin(obj, socket, host, port) {
         var streamTable = globals.streamTable();
         var streamKey = [socket._handle.fd, obj.CircuitID, obj.StreamID];
         streamTable[streamKey] = new net.Socket({allowHalfOpen: true});
-        streamTable[streamKey].connect(parseInt(port), host,  function() {
 
+        streamTable[streamKey].connect(parseInt(port), host,  function() {
+            if (streamTable[streamKey] == null) return;
             streamTable[streamKey].on('error', function(err) {
             });
-            
             streamTable[streamKey].on('data', function(data) {
                 var sock = socket;
                 relay.packAndSendData(data, streamKey[2], obj.CircuitID, socket);
@@ -105,8 +104,6 @@ function relayBegin(obj, socket, host, port) {
                 socket.write(relay.createEndCell(obj.CircuitID, obj.StreamID), function() {
                     //streamTable[streamKey].end();
                     socket.write(relay.createEndCell(obj.CircuitID, obj.StreamID));
-                    delete streamTable[streamKey];
-
                 });
             });
 
@@ -152,7 +149,6 @@ function relayData(obj, socket) {
 }
 
 function relayEnd(obj, socket) {
-    //TODO implement this
     var routingTable = globals.routingTable();
     var streamTable = globals.streamTable();
     var routingKey = [socket._handle.fd, obj.CircuitID];
@@ -171,9 +167,15 @@ function relayEnd(obj, socket) {
 
 function relayConnected(obj, socket) {
     var routingTable = globals.routingTable();
+    var streamTable = globals.streamTable();
+    if (socket == null || socket._handle == null) return;
+    var streamKey = [socket._handle.fd, obj.CircuitID, obj.StreamID];
     var key = [socket._handle.fd, obj.CircuitID];
     if (routingTable[key] == null) {
-        socket.emit('connected');
+        var streamSocket = streamTable[streamKey];
+        if (streamSocket != null) {
+            streamSocket.emit('connected');
+        }
     } else {
         // we are in the middle, just route it along
         var sock = routingTable[key][0];
@@ -264,7 +266,6 @@ function relayExtend(obj, socket) {
                                 routingTable[map_b_key] = map_a_value;
                                 routingTable[map_a_key] = map_b_value;
 
-                                printRoutingTable(routingTable);
 
                                 
                                 // Send relay extended back the opposite way on the circuit
@@ -317,7 +318,6 @@ function relayExtend(obj, socket) {
                     routingTable[map_a_key] = map_b_value;
 
                     
-                    printRoutingTable(routingTable);
 
                     // Send relay extended back the opposite way on the circuit
                     var extendedCell = relay.createExtendedCell(obj.CircuitID);
@@ -357,7 +357,6 @@ function relayExtended(obj, socket) {
 
     var map_b_value = routingTable[map_a_key];
     
-    printRoutingTable(routingTable);
 
     if (map_b_value === null) {
         // CASE 1: Reached beginning of circuit again :)
@@ -371,8 +370,27 @@ function relayExtended(obj, socket) {
     }
 }
 
-function relayBeginFailed() {
-    //TODO implement this
+function relayBeginFailed(obj, socket) {
+    var routingTable = globals.routingTable();
+    var socketTable = globals.socketTable();
+    var agentID = globals.agentID();
+    if (socket == null || socket._handle == null) return;
+    var map_a_key = [socket._handle.fd, obj.CircuitID];
+    var map_b_value = routingTable[map_a_key];
+    
+    if (map_b_value === null) {
+        // CASE 1: Reached beginning of circuit
+        var streamKey = [socket._handle.fd, obj.CircuitID, obj.StreamID];
+        var streamSocket = streamTable[streamKey];
+        if (streamSocket != null) {
+            streamSocket.emit('beginfailed');
+        }
+    } else {
+        // CASE 2: Middle of circuit, keep sending extended back
+        var outCircuitNum = map_b_value[1];
+        var beginFailedCell = relay.createBeginFailed(outCircuitNum, obj.StreamID);
+        map_b_value[0].write(beginFailedCell);
+    }
 }
 
 function relayExtendFailed(obj, socket) {
@@ -465,8 +483,31 @@ function getOddOrEvenCircuit(socketTable, extendAgentID, currSocket) {
     }
 }
 
-function writeRelayExtendFailed() {
+function lookupAndDestroyByCircuitID(id) {
+    var routingTable = globals.routingTable();
 
+    var destroyCB = function(key) {
+        util.log("--> Sent Destroy on circuit: " + key[1]);
+    };
+
+
+    for (var key in routingTable) {
+        if (routingTable.hasOwnProperty(key)) {
+            var cid = key[1];
+            if(cid === id) {
+                var out = routingTable[key];
+                var outSock = out[0];
+                outSock.write(relay.createDestroyCell(routingTable[key][1]), destroyCB(key));
+                var key_a = key;
+                var key_b = [outSock._handle.fd, out[1]];
+
+                delete routingTable[key_a];
+                if (routingTable[key_b]) {
+                    delete routingTable[key_b];
+                }
+            }
+        }
+    }
 }
 
 module.exports = {
