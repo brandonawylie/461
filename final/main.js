@@ -33,6 +33,7 @@ var server = net.createServer(function(sock) {
         var key = sock.remoteAddress + ":" + sock.remotePort;
         console.log("recv'd a " + incPkt.Body + " from " + key);
         prefStore[key] = incPkt.Body;
+        console.log(prefStore);
 
         var resPkt = pack(1);
         sock.end(resPkt);
