@@ -29,7 +29,9 @@ var server = net.createServer(function(sock) {
         if (incPkt.Type == 1) {
             console.log("Recv'd Ack packet in incoming sock, RAWR");
         }
+
         var key = sock.remoteAddress + ":" + sock.remotePort;
+        console.log("recv'd a " + incPkt.Body + " from " + key);
         prefStore[key] = incPkt.Body;
 
         var resPkt = pack(1);
