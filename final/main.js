@@ -34,7 +34,7 @@ server.on('message', function(data, remote){
 
     var key = incPkt.ID;
     prefStore[key] = incPkt.Body;
-    console.log("got a " + incPkt.Body + " from " + key);
+    //console.log("got a " + incPkt.Body + " from " + key);
     var resPkt = pack(1);
 
     if (Object.keys(prefStore).length === NUM_HOSTS) {
@@ -74,7 +74,7 @@ function decideOnTime() {
         }
     }
     keys.sort();
-    console.log(keys);
+    //console.log(keys);
 
     var max = -1;
     var maxKey;
@@ -154,43 +154,7 @@ function sendTimeToHosts(data) {
 
                 sock.send(packet, 0, packet.length, port, ip);
             }
-        }
-       /* var fn = function() {
-            //console.log("trying to connect to " + key);
-            sock.connect(port, ip, function() {
-                var sendTimer;
-                //console.log("connect succeeded to: " + key);
-                clearInterval(conTimer);
-                sock.write(packet);
-
-                sendTimer = setInterval(function () {
-                    //console.log("trying to write packet");
-                    sock.write(packet);
-                }, TIMEOUT);
-
-                sock.on('data', function (data) {
-                    data = data.toString();
-
-                    var incPkt = unpack(data);
-
-
-                    if (incPkt.Type === 1) {
-                        //prefStore[key] = incPkt.Body;
-                        // TODO it's Ack'd
-                        clearInterval(sendTimer);
-                        if (i < arr.length - 1);
-                            startConnections(i + 1, arr);
-                    } else {
-                        //console.log("Recv'd a non-Ack packet on an outgoing line, RAWR");
-                    }
-                });
-
-                sock.on('error', function(err) {
-                    //console.log("There was an error: " + err);
-                });
-            });
-        
-        };*/
+        };
         conTimer = setInterval(fn, TIMEOUT);
         fn();
         
