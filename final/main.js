@@ -17,9 +17,10 @@ var CLOSE_TIMEOUT = 10000;
 var NUM_HOSTS;
 
 var prefStore = {};
-var timers = {};
 var closeTimer;
 var closed = false;
+
+var UUID = Math.floor(Math.random() * 99999);
 
 var server = net.createServer(function(sock) {
     
@@ -30,7 +31,7 @@ var server = net.createServer(function(sock) {
             console.log("Recv'd Ack packet in incoming sock, RAWR");
         }
 
-        var key = sock.remoteAddress + ":" + sock.remotePort;
+        var key = incPkt.ID;//sock.remoteAddress + ":" + sock.remotePort;
         console.log("recv'd a " + incPkt.Body + " from " + key);
         prefStore[key] = incPkt.Body;
         console.log(prefStore);
@@ -97,13 +98,14 @@ function decideOnTime() {
 // time: time in 24hr clock for the propsed time [optinal if Ack]
 function pack(type) {
     // TODO this
-    // 1 byte flag + 4 byte body length + body length
-    var size = 4 + 4 + TIME.length;
+    // 4 byte flag + 4 byte UUID + 4 byte body length + body length
+    var size = 4 + 4 + 4 + TIME.length;
     var buf = new Buffer(size);
     buf.writeUInt32BE(type, 0);
     if (type === 0) {
-        buf.writeUInt32BE(TIME.length, 4);
-        buf.write(TIME, 8, TIME.length, 'utf8');
+        buf.writeUInt32BE(UUID, 4);
+        buf.writeUInt32BE(TIME.length, 8);
+        buf.write(TIME, 12, TIME.length, 'utf8');
     }
     return buf;
 }
@@ -112,6 +114,7 @@ function pack(type) {
 function unpack(data) {
     var obj = {
         "Type": null,
+        "ID": null,
         "Body": null
     };
 
@@ -120,8 +123,9 @@ function unpack(data) {
     var buf = new Buffer(data);
     obj.Type = buf.readUInt32BE(0);
     if (obj.Type === 0) {
-        var len = buf.readUInt32BE(4);
-        obj.Body = buf.toString('utf8', 8, 8 + len);
+        obj.ID = buf.readUInt32BE(4);
+        var len = buf.readUInt32BE(8);
+        obj.Body = buf.toString('utf8', 12, 12 + len);
 
     }
 
@@ -145,18 +149,18 @@ function sendTimeToHosts(data) {
         sock.on('error', function(err){
             //console.log("There was an error: " + err);
         });
-        if (!timers.hasOwnProperty(key)) {
-            timers[key] = {};
-        }
+
+        var conTimer;
 
         var fn = function() {
             //console.log("trying to connect to " + key);
             sock.connect(port, ip, function() {
+                var sendTimer;
                 //console.log("connect succeeded to: " + key);
-                clearInterval(timers[key]["connect"]);
+                clearInterval(conTimer);
                 sock.write(packet);
 
-                timers[key]["send"] = setInterval(function () {
+                sendTimer = setInterval(function () {
                     //console.log("trying to write packet");
                     sock.write(packet);
                 }, TIMEOUT);
@@ -170,7 +174,7 @@ function sendTimeToHosts(data) {
                     if (incPkt.Type === 1) {
                         //prefStore[key] = incPkt.Body;
                         // TODO it's Ack'd
-                        clearInterval(timers[key]["send"]);
+                        clearInterval(sendTimer);
                         if (i < arr.length - 1);
                             startConnections(i + 1, arr);
                     } else {
@@ -184,10 +188,10 @@ function sendTimeToHosts(data) {
             });
         
         };
-
+        conTimer = setInterval(fn, TIMEOUT);
         fn();
         
-        timers[key]["connect"] = setInterval(fn, TIMEOUT);
+        
 
     
     };
