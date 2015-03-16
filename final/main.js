@@ -1,4 +1,5 @@
-var net = require('net');
+//var net = require('net');
+var udp = require('dgram');
 var fs  = require('fs');
 
 if (process.argv.length !== 5) {
@@ -22,27 +23,23 @@ var closed = false;
 
 var UUID = Math.floor(Math.random() * 99999);
 
-var server = net.createServer(function(sock) {
-    
-    sock.on('error', function(){});
-    sock.on('data', function (data) {
-        var incPkt = unpack(data);
-        if (incPkt.Type == 1) {
-            console.log("Recv'd Ack packet in incoming sock, RAWR");
-        }
+var server = udp.createSocket('udp4');
 
-        var key = incPkt.ID;//sock.remoteAddress + ":" + sock.remotePort;
-        console.log("recv'd a " + incPkt.Body + " from " + key);
-        prefStore[key] = incPkt.Body;
-        console.log(prefStore);
+server.on('message', function(data, remote){
 
-        var resPkt = pack(1);
-        sock.end(resPkt);
+    var incPkt = unpack(data);
+    if (incPkt.Type == 1) {
+        console.log("Recv'd Ack packet in incoming sock, RAWR");
+    }
 
-        if (Object.keys(prefStore).length === NUM_HOSTS) {
-            closeOutServer();
-        }
-    }); 
+    var key = incPkt.ID;
+    prefStore[key] = incPkt.Body;
+    console.log("got a " + incPkt.Body + " from " + key);
+    var resPkt = pack(1);
+
+    if (Object.keys(prefStore).length === NUM_HOSTS) {
+        closeOutServer();
+    }
 });
 
 server.on('error', function(){});
@@ -77,6 +74,7 @@ function decideOnTime() {
         }
     }
     keys.sort();
+    console.log(keys);
 
     var max = -1;
     var maxKey;
@@ -111,7 +109,7 @@ function pack(type) {
 }
 
 // unpack an incoming packet, and store it in an object
-function unpack(data) {
+function unpack(buf) {
     var obj = {
         "Type": null,
         "ID": null,
@@ -120,7 +118,7 @@ function unpack(data) {
 
     // TODO this
     //console.log(buf.toString('utf8', 0, 1));
-    var buf = new Buffer(data);
+    //var buf = new Buffer(data);
     obj.Type = buf.readUInt32BE(0);
     if (obj.Type === 0) {
         obj.ID = buf.readUInt32BE(4);
@@ -140,19 +138,24 @@ function sendTimeToHosts(data) {
 
     var startConnections = function(i, arr) {
         if (arr[i] === '' || arr[i] === undefined) return;
-        var curLineArr = arr[i].split(' ');
-        var ip = curLineArr[0];
-        var port = parseInt(curLineArr[1]);
-        var key = ip + ":" + port;
-        var sock = new net.Socket();
-
-        sock.on('error', function(err){
-            //console.log("There was an error: " + err);
-        });
-
-        var conTimer;
-
         var fn = function() {
+            for (var i = 0; i < arr.length; i++) {
+                var curLineArr = arr[i].split(' ');
+                var ip = curLineArr[0];
+                var port = parseInt(curLineArr[1]);
+                var key = ip + ":" + port;
+                var sock = udp.createSocket('udp4');
+
+                sock.on('error', function(err){
+                    //console.log("There was an error: " + err);
+                });
+
+                var conTimer;
+
+                sock.send(packet, 0, packet.length, port, ip);
+            }
+        }
+       /* var fn = function() {
             //console.log("trying to connect to " + key);
             sock.connect(port, ip, function() {
                 var sendTimer;
@@ -187,7 +190,7 @@ function sendTimeToHosts(data) {
                 });
             });
         
-        };
+        };*/
         conTimer = setInterval(fn, TIMEOUT);
         fn();
         
@@ -204,9 +207,10 @@ fs.readFile(FILE, 'utf8', function(err, data) {
             console.log("Could not read file, error: " + err);
         } else {
             NUM_HOSTS = data.split('\n').length;
-            server.listen(PORT, function() {
+            server.on('listening', function() {
                 closeTimer = setTimeout(closeOutServer, CLOSE_TIMEOUT);
             });
+            server.bind(PORT);
             sendTimeToHosts(data);
         }
     });
